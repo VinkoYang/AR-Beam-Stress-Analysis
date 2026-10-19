@@ -1,0 +1,14 @@
+{
+    "name": "ARBeam.Mechanics",
+    "rootNamespace": "ARBeam.Mechanics",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
