@@ -33,6 +33,25 @@ All three use the bench-rig bar: 6061-T6 aluminium, 1" × 1/8" (25.4 × 3.175 mm
 The mass slider is 0–500 g; the position slider runs from the left end (0) to the right end (1).
 The **Shear Force & Bending Moment Diagram** button toggles a live diagram panel.
 
+## UI
+
+All four screens share one look (`Assets/ARBeam/UI/UiTheme.asset`): Inter Regular / Medium / SemiBold / Bold
+(SIL OFL, licence next to the fonts), navy translucent rounded panels, white text, blue accent; shear cyan and
+moment yellow in the diagrams, as in HoloMech. Canvases use a 1920×1080 reference with match 0.5, and every
+element is anchored to its edge or corner, so the layout holds at any window size or aspect ratio.
+
+On a desktop (Editor Play mode with XR Simulation, or a PC build) `DesktopPreviewFraming` moves the XR Origin so the
+whole beam is in view from the side, clear of the top bar, control panel and legend, and re-frames when the window
+is resized. On phones and headsets it does nothing.
+
+Editor tools (menu **ARBeam ▸ UI**), both re-runnable:
+
+- **Build Theme Assets** (`UiThemeBuilder`): static TMP font assets for the four weights (pre-filled with ASCII,
+  Greek and the unit / arrow symbols the UI uses, so Play mode never rewrites them), the rounded-rectangle and
+  circle sprites, and the theme asset.
+- **Restyle All Scenes** (`BeamUiStyler`): lays out and styles the main menu and the three beam scenes, then runs
+  `BeamSceneSetup`. CLI: `unity command eval -- --code "return BeamUiStyler.StyleAllScenes();" --timeout 240000`
+
 ## How it fits together
 
 ```

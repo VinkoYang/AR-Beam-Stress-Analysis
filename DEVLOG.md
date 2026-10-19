@@ -2,6 +2,55 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-19 — UI layout and type redesign (before HoloMech M2)
+
+The PI tested in a 644 × 496 Game view and parts of the UI were off screen.
+
+### Cause
+
+- Beam scenes: canvas reference 1550 × 1100, every element anchored to the screen centre and pushed out with fixed
+  offsets (diagram button at y = +626, sliders at y = −578). At aspect 1.3 the canvas half-height is ≈ 573, so the
+  top and bottom rows fell outside the screen.
+- Main menu: reference 800 × 600 matched on width, title and subtitle in 200 × 50 boxes, text overflowing and
+  covering the buttons.
+- Fonts: three families mixed (AlfaSlabOne green labels, LiberationSans, Inter), no hierarchy; LiberationSans
+  has no U+2212 minus.
+- 3D view: in Play mode on a PC, XR Simulation drives the camera; the beam (11.3 units long, 3.7 units ahead) was
+  only partly in view.
+
+### Changes
+
+- **Theme** (`UiTheme`, built by `UiThemeBuilder`): Inter 4.1 in four weights (OFL, from rsms/inter releases) as
+  static SDF atlases with ASCII, Greek and the symbols the UI needs; 9-sliced rounded-rectangle and circle sprites;
+  colour tokens.
+- **Layout** (`BeamUiStyler`): 1920 × 1080 reference, match 0.5, everything edge- or corner-anchored.
+  Beam scenes: top bar (back, title + beam data from `BeamInfoLabel`, diagram button), bottom control panel
+  (caption, slider, live value for mass and position; "left end" / "right end" under the position slider),
+  stress legend panel on the right, diagram panel sized relative to the screen (16–84 % × 25–86 %) in the dark
+  theme. Main menu: centred card, title, subtitle, three two-line buttons, footer.
+  Student objects are re-anchored and restyled, not replaced; sliders moved into the control panel.
+- `SliderLoadSource` now writes only the value ("500 g", "400 mm"); the caption is a separate label.
+- `BeamSceneSetup` finds sliders and the legend by name anywhere (they now live in the control panel) and prefers
+  a "Value" label for readouts.
+- **`DesktopPreviewFraming`**: on desktop platforms only, turns and moves the XR Origin so the beam fits the view
+  width (margin 1.5), sits slightly above centre and left of centre (clear of the panels), and re-frames on
+  window resize. `XROrigin.MatchOriginUpCameraForward` + `MoveCameraToWorldLocation`, keeping the simulated
+  camera's pitch.
+
+### Verification
+
+Screenshots at 1288 × 992 (2× the PI's Game view) of the main menu, the cantilever under 500 g at the tip, the
+overhang with the diagram panel open, and the fixed–fixed beam under 500 g at midspan: every element on screen,
+whole beam in view, readouts and legend values correct.
+
+### Notes
+
+- A compile error from a mangled string literal went unnoticed for one run because `recompile_status` reports
+  "completed" even when compilation fails, and an unfocused Editor does not import changed files by itself. The
+  check now refreshes the asset database first and reads `console_status.compilationFailed`.
+- The TMP dynamic atlas of `AlfaSlabOne-Regular SDF.asset` churned again during Play mode; reverted. The new Inter
+  assets are static and do not churn.
+
 ## 2026-10-19 — HoloMech reproduction, M1: general supports, sections, input model
 
 Spec: OneDrive `01_plan/HoloMech 复现规格_v01.md` (Amouzgar & Mousavi 2025, *Virtual Reality* 29:121). The repo

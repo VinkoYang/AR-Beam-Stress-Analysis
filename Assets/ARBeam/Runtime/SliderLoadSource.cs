@@ -86,8 +86,8 @@ namespace ARBeam
 
         void OnValuesChanged()
         {
-            if (massLabel != null) massLabel.text = $"Mass: {massGrams:0} g";
-            if (positionLabel != null && beam != null) positionLabel.text = $"x = {position01 * beam.LengthM * 1000:0} mm";
+            if (massLabel != null) massLabel.text = $"{massGrams:0} g";
+            if (positionLabel != null && beam != null) positionLabel.text = $"{position01 * beam.LengthM * 1000:0} mm";
             NotifyChanged();
         }
 

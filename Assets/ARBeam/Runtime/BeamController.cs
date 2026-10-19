@@ -70,6 +70,8 @@ namespace ARBeam
         public BeamSolution Solution { get; private set; }
 
         public double LengthM => lengthMm / 1000.0;
+        public float WidthMm => widthMm;
+        public float ThicknessMm => thicknessMm;
         public BeamSection Section => BeamSection.Rectangular(widthMm / 1000.0, thicknessMm / 1000.0);
         public BeamMaterial Material => ResolveMaterial();
         public BeamSupports Supports => ResolveSupports();

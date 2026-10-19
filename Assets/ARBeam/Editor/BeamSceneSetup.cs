@@ -19,7 +19,7 @@ public static class BeamSceneSetup
 {
     const string LiveDiagramName = "LiveDiagram";
 
-    static readonly string[] ScenePaths =
+    public static readonly string[] ScenePaths =
     {
         "Assets/_ARMarker/Scenes/BeamScene 1.unity", // One fixed end
         "Assets/_ARMarker/Scenes/BeamScene 2.unity", // Overhanging beam
@@ -106,9 +106,9 @@ public static class BeamSceneSetup
         mv.ApplyModifiedPropertiesWithoutUndo();
 
         // ---- Sliders → SliderLoadSource. Mass slider becomes 0–500 g. ----
-        var canvas = FindCanvasWith("Load Slider");
-        var massSlider = canvas != null ? Find<UnityEngine.UI.Slider>(canvas, "Load Slider") : null;
-        var positionSlider = canvas != null ? Find<UnityEngine.UI.Slider>(canvas, "Position Slider") : null;
+        // Found by name anywhere in the scene: BeamUiStyler moves the sliders into a control panel.
+        var massSlider = FindNamed<UnityEngine.UI.Slider>("Load Slider");
+        var positionSlider = FindNamed<UnityEngine.UI.Slider>("Position Slider");
         if (massSlider != null)
         {
             massSlider.minValue = 0f;
@@ -138,7 +138,7 @@ public static class BeamSceneSetup
         ss.ApplyModifiedPropertiesWithoutUndo();
 
         // ---- Stress legend shows the fixed full scale in MPa. ----
-        var legend = canvas != null ? canvas.Find("StressLegend") : null;
+        var legend = FindNamed<UnityEngine.UI.Image>("StressLegend")?.transform;
         if (legend != null)
         {
             var label = GetOrAdd<StressLegendLabel>(legend.gameObject);
@@ -289,17 +289,22 @@ public static class BeamSceneSetup
         EditorUtility.SetDirty(t);
     }
 
-    static Transform FindCanvasWith(string childName)
+    static T FindNamed<T>(string name) where T : Component
     {
-        foreach (var c in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include))
-            if (c.transform.Find(childName) != null) return c.transform;
+        foreach (var c in Object.FindObjectsByType<T>(FindObjectsInactive.Include))
+            if (c.name == name) return c;
         return null;
     }
 
-    /// <summary>The slider's caption: the child with the given name, else its first direct TMP child (scenes differ).</summary>
+    /// <summary>
+    /// Where the slider's current value is written: a child named "Value" (added by BeamUiStyler), else the child
+    /// with the given name, else its first direct TMP child (scenes differ).
+    /// </summary>
     static TMP_Text SliderLabel(UnityEngine.UI.Slider slider, string preferredName)
     {
         if (slider == null) return null;
+        var value = Find<TMP_Text>(slider.transform, "Value");
+        if (value != null) return value;
         var named = Find<TMP_Text>(slider.transform, preferredName);
         if (named != null) return named;
         foreach (Transform child in slider.transform)
