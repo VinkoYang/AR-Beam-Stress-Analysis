@@ -5,8 +5,10 @@ Unity app for teaching shear force, bending moment, stress and deflection in bea
 closed-form beam-theory result: the deflected shape, a stress colour map on a fixed scale, the shear-force and
 bending-moment diagrams, and the support reactions.
 
-The mechanics are exact Euler–Bernoulli closed-form solutions (Macaulay / singularity functions), checked against
-Hibbeler's beam tables. Change history and design decisions are in [DEVLOG.md](DEVLOG.md).
+The mechanics are exact Euler–Bernoulli closed-form solutions (Macaulay / singularity functions) for any set of
+pin and clamp supports, checked against Hibbeler's beam tables and against an independent stiffness-method solver.
+A reproduction of HoloMech (Amouzgar & Mousavi 2025) is being built in `Assets/HoloMech/` on the same solver.
+Change history and design decisions are in [DEVLOG.md](DEVLOG.md).
 
 ## Requirements
 
@@ -45,10 +47,12 @@ The **Shear Force & Bending Moment Diagram** button toggles a live diagram panel
 
 | Folder | Assembly | What is in it |
 |---|---|---|
-| `Assets/ARBeam/Mechanics/` | `ARBeam.Mechanics` (`noEngineReferences: true`) | `BeamModel`, `BeamSection`, `BeamMaterial`, `PointLoad`, `UniformLoad`, `BeamSupports`, `BeamSolver`, `BeamSolution`. No Unity dependency; the compiler enforces it. |
+| `Assets/ARBeam/Mechanics/` | `ARBeam.Mechanics` (`noEngineReferences: true`) | `BeamModel`, `BeamSection` (rectangle, pipe, box, I), `BeamMaterial`, `PointLoad`, `UniformLoad`, `BeamSupports` (named layouts, per-end Free/Pinned/Fixed, or any support list), `BeamSolver`, `BeamSolution`, `BeamResult`. No Unity dependency; the compiler enforces it. |
 | `Assets/ARBeam/Runtime/` | `ARBeam.Runtime` | MonoBehaviours: `BeamController`, `BeamLoadSource` (+ `SliderLoadSource`, `InspectorLoadSource`), `BeamMeshView`, `BeamDiagramGraphic`, `StressLegendLabel`, `SliderDrivenBeam`. |
 | `Assets/ARBeam/Editor/` | Assembly-CSharp-Editor | `BeamSceneSetup`: menu **ARBeam ▸ Set Up Beam Scenes** wires the three scenes. Idempotent. |
-| `Assets/ARBeam/Tests/EditMode/` | `ARBeam.Mechanics.Tests` | 77 NUnit tests (see below). |
+| `Assets/ARBeam/Tests/EditMode/` | `ARBeam.Mechanics.Tests` | 105 NUnit tests (see below). |
+| `Assets/HoloMech/Model/` | `HoloMech.Model` (`noEngineReferences: true`) | `HoloMechInputs`: the HoloMech panels' values (cm, N, N/m, GPa, upward positive) and their conversion to an SI `BeamModel`. |
+| `Assets/HoloMech/Tests/EditMode/` | `HoloMech.Tests` | 8 tests for the unit and sign conversion. |
 | `Assets/*.cs` | Assembly-CSharp | The original scripts. `CantileverBeam`, `OverhangBeam`, `BeamBend` are now thin subclasses of `SliderDrivenBeam`, kept so the scenes' slider events still resolve. `DiagramPopup` toggles the live panel. |
 | `Tools/SolverTests/` | — | .NET project that compiles the solver and its tests outside Unity. |
 
@@ -68,6 +72,12 @@ s.Moment(0.6);            // −0.981 N·m
 s.Deflection(0.8);        // −8.40e-3 m
 s.MaxBendingStress;       // 2.30e7 Pa
 s.Diagram(BeamQuantity.Shear);   // polyline with vertical steps at point loads
+s.Sample(16);                    // BeamResult: arrays x, V, M, θ, w, σmax on the same grid
+
+// Any end conditions; a mechanism is reported instead of solved:
+var propped = new BeamModel(2.0, BeamSection.Pipe(0.16, 0.026), 200e9,
+                            BeamSupports.Ends(EndCondition.Fixed, EndCondition.Pinned));
+BeamSolver.TrySolve(propped, out var solution, out string error);   // error != null for Free–Pinned etc.
 ```
 
 ### Conventions
@@ -110,7 +120,9 @@ Put it on the beam object (or a child) and it is picked up automatically, or add
 
 ## Tests
 
-77 EditMode tests in `Assets/ARBeam/Tests/EditMode/`:
+113 EditMode tests.
+
+`Assets/ARBeam/Tests/EditMode/` (105):
 
 - **HibbelerTableTests**: R. C. Hibbeler, *Mechanics of Materials* (10th ed.), Appendix C: cantilever (end load,
   midspan load, full and half UDL) and simply supported (central and off-centre load, full and half UDL),
@@ -118,9 +130,17 @@ Put it on the beam object (or a child) and it is picked up automatically, or add
   four-figure coefficients (0.006563 wL⁴/EI at 0.4598 L) to the project's 1 % criterion.
 - **OverhangAndFixedTests**: overhang by superposition of Appendix C cases; fixed–fixed from Gere & Goodno
   Appendix H / Roark Table 8.1.
+- **GeneralSupportTests**: the HoloMech spec §3.5 acceptance cases (< 0.5 %) through the per-end API, including
+  a propped cantilever and a cantilever clamped on the right; stability of all nine Free/Pinned/Fixed end pairs;
+  a two-span continuous beam; and agreement with **StiffnessReferenceSolver** (direct stiffness method, Hermite
+  elements, used only in tests) for every stable end pair, an overhang and a three-support beam, to 1e-6.
+- **SectionTests**: A, I, c of rectangle, hollow box, pipe and I-section against hand calculation.
 - **BenchRigTests**: the numbers in the rig plan (22.4 / 11.2 / 8.4 mm, 46 / 23 MPa for 500 g).
 - **SolverPropertyTests**: equilibrium, dM/dx = V and dv/dx = θ, support conditions, superposition, peak
   finding against dense sampling, diagram steps, input validation.
+
+`Assets/HoloMech/Tests/EditMode/` (8): cm/GPa → SI, "upward is positive" → solver sign, material buttons,
+section dimensions, unstable supports and bad loads reported before solving.
 
 Run them in **Window ▸ General ▸ Test Runner ▸ EditMode**, or without Unity:
 
@@ -131,7 +151,8 @@ dotnet test Tools/SolverTests
 or against the open Editor with the Unity CLI:
 
 ```
-unity command run_tests -- --mode EditMode --filter ARBeam --filter_type assembly
+unity command run_tests -- --mode EditMode --filter ARBeam.Mechanics.Tests --filter_type assembly
+unity command run_tests -- --mode EditMode --filter HoloMech.Tests --filter_type assembly
 ```
 
 ## Re-running the scene setup
@@ -146,6 +167,7 @@ unity command eval -- --code "return BeamSceneSetup.SetUpAllScenes();" --timeout
 
 ## Not done yet
 
+- HoloMech reproduction milestones M2–M5 (beam mesh and deflection view, input panels, stress view, device).
 - Cross-check against the Python package IndeterminateBeam (Bonanno 2021).
 - Load input from tracked weight markers (rig option B) or hand interaction (headset option A).
 - A simply supported scene (the solver and tests already cover it).

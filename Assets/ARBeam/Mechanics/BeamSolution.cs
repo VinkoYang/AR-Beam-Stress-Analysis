@@ -164,6 +164,35 @@ namespace ARBeam.Mechanics
             return points;
         }
 
+        /// <summary>
+        /// All quantities sampled on the same x grid as <see cref="Diagram"/> (key points split into segments;
+        /// a jump appears as two samples with the same x), plus the summary values.
+        /// </summary>
+        public BeamResult Sample(int samplesPerSegment = 16)
+        {
+            if (samplesPerSegment < 1) throw new ArgumentOutOfRangeException(nameof(samplesPerSegment));
+            int count = (keyPoints.Length - 1) * (samplesPerSegment + 1);
+            var r = new BeamResult(count, this);
+            int k = 0;
+            for (int s = 0; s + 1 < keyPoints.Length; s++)
+            {
+                double x0 = keyPoints[s], x1 = keyPoints[s + 1];
+                for (int j = 0; j <= samplesPerSegment; j++, k++)
+                {
+                    bool right = j < samplesPerSegment;
+                    double x = right ? x0 + (x1 - x0) * j / samplesPerSegment : x1;
+                    r.X[k] = x;
+                    r.Shear[k] = right ? ShearRight(x) : ShearLeft(x);
+                    r.Moment[k] = right ? MomentRight(x) : MomentLeft(x);
+                    r.Slope[k] = Slope(x);
+                    r.Deflection[k] = Deflection(x);
+                    r.MaxStress[k] = Math.Abs(r.Moment[k]) * Model.Section.C / Model.Section.I;
+                }
+            }
+
+            return r;
+        }
+
         double EvaluateSided(BeamQuantity quantity, double x, bool rightLimit)
         {
             switch (quantity)
@@ -187,9 +216,7 @@ namespace ARBeam.Mechanics
         {
             var xs = new List<double> { 0, model.Length };
             foreach (var t in terms) xs.Add(t.A);
-            var (a, b) = model.SupportPositions;
-            xs.Add(a);
-            xs.Add(b);
+            foreach (var s in model.ResolvedSupports) xs.Add(s.Position);
             xs.Sort();
 
             var unique = new List<double>(xs.Count);

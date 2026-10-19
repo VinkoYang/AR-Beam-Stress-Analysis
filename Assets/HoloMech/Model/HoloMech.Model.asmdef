@@ -1,0 +1,16 @@
+{
+    "name": "HoloMech.Model",
+    "rootNamespace": "HoloMech",
+    "references": [
+        "ARBeam.Mechanics"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

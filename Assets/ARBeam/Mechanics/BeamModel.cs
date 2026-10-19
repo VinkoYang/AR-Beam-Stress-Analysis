@@ -33,18 +33,33 @@ namespace ARBeam.Mechanics
         /// <summary>Flexural rigidity EI, N·m².</summary>
         public double FlexuralRigidity => ElasticModulus * Section.I;
 
-        /// <summary>Support positions actually used by the solver (a, b). Cantilever/FixedFixed return (0, L).</summary>
+        /// <summary>The supports the solver uses, sorted left to right.</summary>
+        public List<Support> ResolvedSupports => Supports.Resolve(Length);
+
+        /// <summary>Positions of the leftmost and rightmost support (both 0 for a single clamp).</summary>
         public (double a, double b) SupportPositions
-            => Supports.Type == SupportType.Overhang ? (Supports.A, Supports.B) : (0.0, Length);
+        {
+            get
+            {
+                var s = ResolvedSupports;
+                return s.Count == 0 ? (0.0, Length) : (s[0].Position, s[s.Count - 1].Position);
+            }
+        }
 
         public void Validate()
         {
             if (Section.I <= 0) throw new InvalidOperationException("Section is not set.");
-            if (Supports.Type == SupportType.Overhang)
+            if (Supports.Type == SupportType.Overhang && !(Supports.B > Supports.A))
+                throw new InvalidOperationException($"Overhang supports must satisfy a < b (a={Supports.A}, b={Supports.B}).");
+
+            var supports = ResolvedSupports;
+            for (int i = 0; i < supports.Count; i++)
             {
-                var (a, b) = SupportPositions;
-                if (a < 0 || b > Length || !(b > a))
-                    throw new InvalidOperationException($"Overhang supports must satisfy 0 <= a < b <= L (a={a}, b={b}, L={Length}).");
+                double p = supports[i].Position;
+                if (p < 0 || p > Length || double.IsNaN(p))
+                    throw new InvalidOperationException($"Support outside the beam: {supports[i]} (L={Length}).");
+                if (i > 0 && p - supports[i - 1].Position < 1e-9 * Length)
+                    throw new InvalidOperationException($"Two supports at the same position x={p}.");
             }
 
             foreach (var p in PointLoads)

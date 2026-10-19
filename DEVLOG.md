@@ -2,6 +2,55 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-19 — HoloMech reproduction, M1: general supports, sections, input model
+
+Spec: OneDrive `01_plan/HoloMech 复现规格_v01.md` (Amouzgar & Mousavi 2025, *Virtual Reality* 29:121). The repo
+also moved to a private GitHub repo owned by the PI (`origin` = VinkoYang/AR-Beam-Stress-Analysis; the student's
+repo is kept as remote `adar`, not pushed to).
+
+### Decisions agreed with the PI before coding
+
+| Spec says | We do | Why |
+|---|---|---|
+| §3.2 direct stiffness method with ≥ 200 Hermite elements | Generalised Macaulay solver in production; the stiffness method lives in the tests as an independent reference | Exact V, M, θ, w everywhere with no mesh or interpolation; the same singular-matrix stability test; reuses the tested solver. Two independent methods agreeing is stronger evidence than one. |
+| §6 separate `Assets/HoloMech/Core` | Extend the shared `ARBeam.Mechanics` | One mechanics library for the rig scenes and HoloMech. |
+| §5 XR Device Simulator from the start | Mouse in the Game view for M2–M4, simulator at M5 | Importing the XRI 3.5.1 samples next to the template's 3.1.2 samples causes duplicate types; sort that out with the device decision. |
+| V/M sign | Hibbeler (sagging M positive, V = upward forces left of the cut) | Revisit after the IndeterminateBeam briefing (10-26). |
+
+### What changed
+
+- **Supports.** `BeamSupports` now resolves to a list of `Support`s (position + `Pin`/`Fixed`). New layouts:
+  `Ends(left, right)` with `EndCondition` Free/Pinned/Fixed, and `Custom(...)` for any number of supports. The
+  old named layouts are shorthands, so the rig scenes are unchanged.
+- **Solver.** Unknowns are every support force, every clamp moment and the two integration constants; equations
+  are ΣF, ΣM, v = 0 at each support and θ = 0 at each clamp. Rows and columns are scaled by powers of L so the
+  singularity test is unit-free. A singular system throws `UnstableBeamException`; `TrySolve` and `IsStable`
+  report it as a message (spec §2.1 / §3.3).
+- **Sections.** `BeamSection.Pipe`, `Box` (t = 0 solid), `IBeam`.
+- **`BeamSolution.Sample(n)`** → `BeamResult` (arrays x, V, M, θ, w, σmax plus reactions and peaks), the output
+  shape the spec asks for.
+- **`HoloMech.Model`** (pure C#): `HoloMechInputs` holds the panel values in UI units with the paper's defaults
+  (pipe, 200 cm, 20 GPa Custom, point load 2000 N down at 100 cm) and converts to SI. Upward is positive on screen,
+  so Up flips the sign going into the solver. Slider ranges are in `HoloMechRanges`.
+
+### Verification
+
+- 113 EditMode tests pass in Unity 6.5 and in `dotnet test Tools/SolverTests`: the 77 earlier ones unchanged,
+  plus spec §3.5 (all within 0.5 %, in fact ~1e-9), nine end pairs (three mechanisms rejected, with or without
+  load), a two-span continuous beam (3wl/8, 10wl/8, −wl²/8), section properties, and the stiffness-method
+  cross-check.
+- Cross-check tolerance is 1e-6 relative: the reference's own round-off is ~1e-7 because a 200-element stiffness
+  matrix has a condition number of order (L/l)⁴ ≈ 1e9.
+- Mutation check: flipping the sign of the clamp-moment column in the θ = 0 rows fails 11 tests (fixed–fixed
+  tables, spec case, support conditions, every stiffness cross-check).
+- Rig scenes re-run in Play mode: same reactions, deflections and stresses as before (cantilever −22.410 mm /
+  45.96 MPa, overhang −8.404 mm / 22.98 MPa, fixed–fixed −2.801 mm / 11.49 MPa). The fixed–fixed peak moment is
+  now reported at the clamp instead of midspan; both have |M| = PL/8, the tie just resolves the other way.
+
+### Open
+
+- M2: beam mesh (pipe / box / I extrusion), Scene 4 deflection view.
+
 ## 2026-10-19 — Real beam mechanics (branch `wenhao/solver`, Wenhao Yang with Claude Code)
 
 ### Starting point
