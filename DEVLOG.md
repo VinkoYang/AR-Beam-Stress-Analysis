@@ -2,6 +2,47 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-19 — HoloMech M3: input flow (Scenes 2, 2.a–c, 3) and stability error
+
+`HoloMechApp` is now the state controller: BeamInfo → Loading → Deformation, Back from each, all in one Unity scene
+(the spec's allowed deviation). It starts from the paper's defaults (pipe, fixed–fixed, 200 cm, 20 GPa Custom,
+2000 N down at 100 cm) and builds the beam only when the user presses Next on the loading screen.
+
+- **`BeamInfoScreen`** (Fig. 3): Section Type (Pipe / Box / I, mutually exclusive), Boundary Selection (Left / Right ×
+  Free / Pinned / Fixed), Beam Information (length 50–500 cm step 1, E 1–250 GPa step 1, Steel / Concrete / Wood /
+  Custom buttons; a preset sets E and highlights, moving the E slider switches to Custom), Next.
+- **`DimensionsPopup`** (2.a–c): sliders for the chosen section in cm (step 0.1) with dependent limits enforced
+  (pipe wall ≤ D/2, flange thickness < h/2, web ≤ flange), live A and I, and a 2-D cross-section drawing
+  (`SectionPreviewGraphic`) instead of the paper's small 3-D preview. Opens when a section is chosen or from
+  "Edit dimensions"; Apply closes it.
+- **`LoadingScreen`** (Fig. 4): Point-Load and Uniform-Load columns, each optional; position / start / end sliders
+  (range follows the beam length, end stays > start), magnitude (0–10000 N, N/m for the uniform load, labelled), Up /
+  Down choice, Back / Next. A disabled column greys its sliders.
+- **`ErrorPopup`**: Next on Scene 2 runs `HoloMechInputs.Validate()` (stability via the solver's singular-system
+  test, section limits); a Free–Pinned beam shows "The beam is unstable with a Free left end and a Pinned right end…"
+  and stays on the screen. Solver failures on Next in Scene 3 use the same popup.
+- Back keeps every input. Shortening the beam pulls load positions back onto it (`ClampLoadsToLength`).
+- `UiKit` gained check-box rows, labelled sliders with step and value, and the canvas now uses **Expand** scaling: the
+  whole 1920 × 1080 reference area is always visible, which fixes columns being cut off in a 4:3 Game window.
+
+### Verification
+
+Screenshots (1288 × 992) of Scene 2, the I-beam dimension popup (area 116.07 cm², I 19355.84 cm⁴ shown), Scene 3 and
+the Free–Pinned error popup. A script drove the real buttons: simply supported steel pipe, 2000 N at midspan →
+screen text "Max. Deflection: 0.00654 cm" = PL³/48EI = 0.00654 cm; Back from 4 → 3 → 2 keeps pinned/pinned and
+E = 200; shortening to 80 cm moved the 100 cm load to 80 cm.
+
+### Bugs found
+
+`ToggleGroup` is one per object (a second `AddComponent` returns null: the boundary columns now have their own host
+objects); `Graphic` subclasses need an explicit `RequireComponent(CanvasRenderer)` in this Unity version (blank
+preview); `SetIsOnWithoutNotify` does not restyle a custom toggle, so screens assign `isOn` under a `syncing` guard.
+
+### Open
+
+M4 Scene 5 (V and M diagrams, cut slider, colour bar, five switches), pin / follow-user behaviour, XR input (M5).
+The Pin button on the Scene 4 menu is not wired yet.
+
 ## 2026-10-19 — HoloMech M2: beam mesh and Scene 4 (deformation view)
 
 Scene `Assets/HoloMech/Scenes/HoloMech.unity` (built by **HoloMech ▸ Build Scene**), inputs set in the Inspector to the

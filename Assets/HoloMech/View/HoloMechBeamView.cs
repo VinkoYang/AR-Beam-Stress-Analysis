@@ -101,9 +101,14 @@ namespace HoloMech
             EnsureChildren();
         }
 
+        [Tooltip("Solve and draw the Inspector inputs on Start. HoloMechApp turns this off for the input flow.")]
+        [SerializeField] bool buildOnStart = true;
+
+        public bool BuildOnStart { get => buildOnStart; set => buildOnStart = value; }
+
         void Start()
         {
-            Rebuild(true);
+            if (buildOnStart) Rebuild(true);
         }
 
         /// <summary>Solves with new inputs and redraws. Returns false (and raises SolveFailed) if the beam cannot be solved.</summary>

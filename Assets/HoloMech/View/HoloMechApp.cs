@@ -3,10 +3,22 @@ using UnityEngine;
 
 namespace HoloMech
 {
+    public enum AppState
+    {
+        /// <summary>Scene 2: section, boundary, length and material.</summary>
+        BeamInfo,
+
+        /// <summary>Scene 3: point and uniform loads.</summary>
+        Loading,
+
+        /// <summary>Scene 4: deflected beam.</summary>
+        Deformation,
+    }
+
     /// <summary>
-    /// Entry point of the HoloMech scene. Milestone 2: the beam is shown from the inputs set in the Inspector
-    /// (the paper's Fig. 5 case by default) with the Scene 4 menu. The input panels (Scene 2 / 3) and the stress
-    /// view (Scene 5) are added by later milestones.
+    /// Entry point and state controller of the HoloMech scene. All screens live in one Unity scene (the beam stays in the
+    /// scene, so nothing is passed between scenes): Scene 2 → (2.a–c dimensions popup) → Scene 3 → Scene 4, with Back
+    /// available throughout. Scene 5 (stress profile) is added by milestone 4.
     /// </summary>
     public class HoloMechApp : MonoBehaviour
     {
@@ -14,7 +26,19 @@ namespace HoloMech
         [SerializeField] HoloMechBeamView beamView;
         [SerializeField] Camera viewCamera;
 
-        public DeformationPanel DeformationPanel { get; private set; }
+        [Tooltip("Where to start. Deformation starts from the inputs set on the beam view (for demos and screenshots).")]
+        [SerializeField] AppState startState = AppState.BeamInfo;
+
+        HoloMechInputs inputs;
+        BeamInfoScreen info;
+        DimensionsPopup dimensions;
+        LoadingScreen loading;
+        DeformationPanel deformation;
+        ErrorPopup error;
+
+        public AppState State { get; private set; }
+        public HoloMechInputs Inputs => inputs;
+        public DeformationPanel DeformationPanel => deformation;
 
         void Start()
         {
@@ -22,10 +46,69 @@ namespace HoloMech
             if (beamView == null) beamView = FindAnyObjectByType<HoloMechBeamView>();
             UiKit.EnsureEventSystem();
 
+            beamView.BuildOnStart = startState == AppState.Deformation;
+            inputs = startState == AppState.Deformation ? beamView.Inputs.Clone() : new HoloMechInputs();
+
             var canvas = UiKit.ScreenCanvas("HoloMech UI", transform);
-            DeformationPanel = DeformationPanel.Create(theme, canvas.transform, beamView);
+            info = BeamInfoScreen.Create(theme, canvas.transform, inputs);
+            loading = LoadingScreen.Create(theme, canvas.transform, inputs);
+            deformation = DeformationPanel.Create(theme, canvas.transform, beamView);
+            dimensions = DimensionsPopup.Create(theme, canvas.transform, inputs);
+            error = ErrorPopup.Create(theme, canvas.transform);
+
+            info.SectionChosen += _ => dimensions.Show();
+            dimensions.Applied += () => { };
+            info.nextButton.onClick.AddListener(OnInfoNext);
+            loading.backButton.onClick.AddListener(() => Go(AppState.BeamInfo));
+            loading.nextButton.onClick.AddListener(OnLoadingNext);
+            deformation.backButton.onClick.AddListener(() => Go(AppState.Loading));
 
             FrameCamera();
+            Go(startState);
+        }
+
+        void OnInfoNext()
+        {
+            inputs.ClampLoadsToLength();
+            // Only the beam itself is checked here; loads are entered on the next screen.
+            var problems = inputs.Validate();
+            problems.RemoveAll(p => p.StartsWith("Point load") || p.StartsWith("Uniform load"));
+            if (problems.Count > 0) { error.Show(string.Join("\n\n", problems)); return; }
+            Go(AppState.Loading);
+        }
+
+        void OnLoadingNext()
+        {
+            if (!beamView.Apply(inputs)) return; // SolveFailed already showed the message
+            Go(AppState.Deformation);
+        }
+
+        void OnEnable()
+        {
+            if (beamView != null) beamView.SolveFailed += OnSolveFailed;
+        }
+
+        void OnDisable()
+        {
+            if (beamView != null) beamView.SolveFailed -= OnSolveFailed;
+        }
+
+        void OnSolveFailed(string message)
+        {
+            if (error != null) error.Show(message);
+        }
+
+        public void Go(AppState state)
+        {
+            State = state;
+            if (state == AppState.Loading) loading.Sync();
+            if (state == AppState.BeamInfo) info.Sync();
+            if (state == AppState.Deformation && startState == AppState.Deformation && beamView.Solution == null) beamView.Rebuild(true);
+
+            info.gameObject.SetActive(state == AppState.BeamInfo);
+            loading.gameObject.SetActive(state == AppState.Loading);
+            deformation.gameObject.SetActive(state == AppState.Deformation);
+            beamView.gameObject.SetActive(state == AppState.Deformation);
         }
 
         /// <summary>Puts the camera in front of the beam so the whole length is visible above the menu.</summary>

@@ -53,8 +53,8 @@ namespace HoloMech
             var scaler = go.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
+            // Expand: the whole 1920x1080 reference area is always visible, at any aspect ratio.
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
             return canvas;
         }
 
@@ -196,6 +196,87 @@ namespace HoloMech
             s.maxValue = max;
             s.value = value;
             return s;
+        }
+
+        /// <summary>
+        /// Row with a check box on the right. Rows sharing a <see cref="ToggleGroup"/> are mutually exclusive
+        /// (the paper's section, boundary and force-direction choices).
+        /// </summary>
+        public static Toggle Checkbox(UiTheme t, Transform parent, string name, string caption, bool on, ToggleGroup group = null, float fontSize = 0)
+        {
+            var row = Panel(t, parent, name, t.panelRaised);
+            row.raycastTarget = true;
+            var label = Label(t, row.transform, "Caption", caption, t.medium, fontSize > 0 ? fontSize : t.labelSize, t.textPrimary, TextAlignmentOptions.MidlineLeft);
+            label.rectTransform.Stretch(new Vector2(20, 0), new Vector2(-70, 0));
+
+            var box = Panel(t, row.transform, "Box", t.track);
+            box.rectTransform.Place(new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-18, 0), new Vector2(34, 34));
+            var tick = Panel(t, box.transform, "Tick", t.accent);
+            tick.rectTransform.Place(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(20, 20));
+
+            var toggle = row.gameObject.AddComponent<Toggle>();
+            toggle.targetGraphic = row;
+            toggle.transition = Selectable.Transition.None;
+            toggle.group = group;
+            toggle.isOn = on;
+            toggle.onValueChanged.AddListener(v => Style(v));
+            Style(on);
+            return toggle;
+
+            void Style(bool value)
+            {
+                tick.enabled = value;
+                row.color = value ? Color.Lerp(t.panelRaised, t.panelHover, 0.7f) : t.panelRaised;
+            }
+        }
+
+        /// <summary>
+        /// Caption (left) and live value (right) above a slider. <paramref name="step"/> rounds the value
+        /// (0 = continuous). Returns the slider; <paramref name="valueLabel"/> shows the formatted value.
+        /// </summary>
+        public static Slider LabeledSlider(UiTheme t, Transform parent, string name, string caption, float min, float max, float value,
+            float step, string format, out TMP_Text valueLabel, Action<float> onChanged)
+        {
+            var root = Rect(name, parent);
+            var cap = Label(t, root, "Caption", caption, t.medium, t.labelSize - 2, t.textPrimary, TextAlignmentOptions.TopLeft);
+            cap.rectTransform.Place(new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(520, 34));
+            var val = Label(t, root, "Value", "", t.semiBold, t.valueSize - 2, t.textPrimary, TextAlignmentOptions.TopRight);
+            val.rectTransform.Place(new Vector2(1, 1), new Vector2(1, 1), Vector2.zero, new Vector2(220, 34));
+            valueLabel = val;
+
+            var slider = Slider(t, root, "Slider", min, max, value);
+            var sr = (RectTransform)slider.transform;
+            sr.anchorMin = new Vector2(0, 0);
+            sr.anchorMax = new Vector2(1, 0);
+            sr.pivot = new Vector2(0.5f, 0);
+            sr.offsetMin = new Vector2(0, 0);
+            sr.offsetMax = new Vector2(0, 32);
+
+            void Show(float v) => val.text = string.Format(System.Globalization.CultureInfo.InvariantCulture, format, v);
+            slider.onValueChanged.AddListener(v =>
+            {
+                if (step > 0)
+                {
+                    float snapped = Mathf.Round(v / step) * step;
+                    if (!Mathf.Approximately(snapped, v))
+                    {
+                        slider.SetValueWithoutNotify(snapped);
+                        v = snapped;
+                    }
+                }
+
+                Show(v);
+                onChanged?.Invoke(v);
+            });
+            Show(value);
+            return slider;
+        }
+
+        /// <summary>Sets a slider without firing events and refreshes its value label (for programmatic changes).</summary>
+        public static void SetSlider(Slider s, TMP_Text label, string format, float value)
+        {
+            s.SetValueWithoutNotify(value);
+            label.text = string.Format(System.Globalization.CultureInfo.InvariantCulture, format, value);
         }
 
         /// <summary>Slider position 0..1 ↔ value on a log scale (for the deflection scale).</summary>

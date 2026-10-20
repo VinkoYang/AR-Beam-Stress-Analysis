@@ -153,6 +153,15 @@ namespace HoloMech
 
         public BeamSupports Supports => BeamSupports.Ends(leftEnd, rightEnd);
 
+        /// <summary>Pulls load positions back onto the beam after the length was shortened.</summary>
+        public void ClampLoadsToLength()
+        {
+            pointLoad.positionCm = Math.Min(Math.Max(pointLoad.positionCm, 0f), lengthCm);
+            uniformLoad.endCm = Math.Min(Math.Max(uniformLoad.endCm, 0f), lengthCm);
+            uniformLoad.startCm = Math.Min(Math.Max(uniformLoad.startCm, 0f), lengthCm);
+            if (uniformLoad.endCm <= uniformLoad.startCm) uniformLoad.startCm = Math.Max(0f, uniformLoad.endCm - 1f);
+        }
+
         /// <summary>Input problems a panel should show before the solver runs. Empty list = fine.</summary>
         public List<string> Validate()
         {

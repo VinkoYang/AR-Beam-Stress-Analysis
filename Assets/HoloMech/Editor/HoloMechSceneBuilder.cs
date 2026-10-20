@@ -54,6 +54,9 @@ public static class HoloMechSceneBuilder
         ApplyPaperFigure5(view.Inputs);
         var stress = AssetDatabase.LoadAssetAtPath<Material>("Assets/BeamStressMaterial.mat");
         view.SetMaterials(stress, null, null, null, null);
+        var vso = new SerializedObject(view);
+        vso.FindProperty("buildOnStart").boolValue = false; // HoloMechApp builds the beam when the user presses Next
+        vso.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(view);
 
         var appGo = new GameObject("HoloMech App");
