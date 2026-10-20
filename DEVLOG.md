@@ -24,11 +24,13 @@ student scenes keep the Inter theme), and install the Android modules now.
   Overwrite was chosen). All Required items are done: Linear colour space, minimum API 32, GameActivity entry,
   passthrough capability and `OVRManager` passthrough, camera background transparent, hands and controllers, no
   black system splash. Linear colour space is project-wide, so the PC and student scenes now render in Linear too
-  (checked: HoloMech PC scene unchanged apart from slightly heavier text). Left open (Recommended / Optional):
-  Platform SDK app ID and Data Use Checkup (only if Platform SDK is used), disable the Unity splash, graphics jobs,
-  multithreaded rendering, stereo instancing, intermediate texture mode, dynamic resolution, depth texture, MSAA,
-  `OVROverlayCanvas`. Their automatic fixes did not apply in two passes; they are performance settings to tune on
-  the headset.
+  (checked: HoloMech PC scene unchanged apart from slightly heavier text). The tool kept applying fixes in the
+  background after the second pass and they were committed separately: passthrough system splash, hand tracking in
+  the manifest, no Unity splash, single-pass instanced stereo, graphics jobs, GPU skinning, MSAA 4x, no depth
+  texture, intermediate texture Auto, landscape orientation. Left open: Platform SDK app ID and Data Use Checkup
+  (only if Platform SDK is used) and `OVROverlayCanvas` for sharper text.
+- `Assets/#Meta/` (telemetry / session ids) and `Assets/Resources/DevAgentSettings.asset` (per-machine token) are
+  git-ignored; the SDK recreates them.
 
 ### UI: `UiKit` skin with Meta's UI Set
 
