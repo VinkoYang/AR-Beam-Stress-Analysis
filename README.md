@@ -7,7 +7,7 @@ bending-moment diagrams, and the support reactions.
 
 The mechanics are exact Euler–Bernoulli closed-form solutions (Macaulay / singularity functions) for any set of
 pin and clamp supports, checked against Hibbeler's beam tables and against an independent stiffness-method solver.
-A reproduction of HoloMech (Amouzgar & Mousavi 2025) is being built in `Assets/HoloMech/` on the same solver. Milestones 1–3 (solver, deflection view, input panels with the stability check) are done; the scene is `Assets/HoloMech/Scenes/HoloMech.unity`; rebuild the scene with the menu **HoloMech ▸ Build Scene**.
+A reproduction of HoloMech (Amouzgar & Mousavi 2025) is being built in `Assets/HoloMech/` on the same solver. Milestones 1–4 are done (solver, deflection view, input panels with the stability check, stress view with diagrams and a section cut), with two layouts: **Workbench** (all panels on screen, the beam updates while you drag) and **Guided** (the paper's step-by-step flow); the scene is `Assets/HoloMech/Scenes/HoloMech.unity`; rebuild the scene with the menu **HoloMech ▸ Build Scene**.
 Change history and design decisions are in [DEVLOG.md](DEVLOG.md).
 
 ## Requirements
@@ -71,8 +71,8 @@ Editor tools (menu **ARBeam ▸ UI**), both re-runnable:
 | `Assets/ARBeam/Editor/` | Assembly-CSharp-Editor | `BeamSceneSetup`: menu **ARBeam ▸ Set Up Beam Scenes** wires the three scenes. Idempotent. |
 | `Assets/ARBeam/Tests/EditMode/` | `ARBeam.Mechanics.Tests` | 105 NUnit tests (see below). |
 | `Assets/HoloMech/Model/` | `HoloMech.Model` (`noEngineReferences: true`) | `HoloMechInputs`: the HoloMech panels' values (cm, N, N/m, GPa, upward positive) and their conversion to an SI `BeamModel`. |
-| `Assets/HoloMech/View/` | `HoloMech.View` | Scene 4 view: `HoloMechBeamView` (grey reference beam, deflected beam coloured by \|w\|, supports, load arrows), `BeamMeshBuilder` (section extrusion, 240 stations), `DeformationPanel`, `UiKit` (themed controls from code); input flow: `BeamInfoScreen` (Scene 2), `DimensionsPopup` (2.a–c, with a live cross-section preview), `LoadingScreen` (Scene 3), `ErrorPopup`; `HoloMechApp` is the state controller (Scene 2 → 3 → 4, Back everywhere). |
-| `Assets/HoloMech/Tests/EditMode/` | `HoloMech.Tests` | 15 tests: unit and sign conversion, section outlines vs section properties. |
+| `Assets/HoloMech/View/` | `HoloMech.View` | Scene 4 view: `HoloMechBeamView` (grey reference beam, deflected beam coloured by \|w\|, supports, load arrows), `BeamMeshBuilder` (section extrusion, 240 stations), `DeformationPanel`, `UiKit` (themed controls from code); Workbench layout: `WorkbenchLayout` (collapsible side panels, live re-solve, problem banner); Guided layout: `BeamInfoScreen` (Scene 2), `DimensionsPopup` (2.a–c, live cross-section preview), `LoadingScreen` (Scene 3), `ErrorPopup`; Scene 5: `StressProfileView` (3D V and M diagrams, section cut with shear arrow / moment arc / σ profile) and `StressPanel` (cut slider, colour bar and pointer, five switches); `HoloMechApp` is the state controller. |
+| `Assets/HoloMech/Tests/EditMode/` | `HoloMech.Tests` | 16 tests: unit and sign conversion, section outlines vs section properties. |
 | `Assets/*.cs` | Assembly-CSharp | The original scripts. `CantileverBeam`, `OverhangBeam`, `BeamBend` are now thin subclasses of `SliderDrivenBeam`, kept so the scenes' slider events still resolve. `DiagramPopup` toggles the live panel. |
 | `Tools/SolverTests/` | — | .NET project that compiles the solver and its tests outside Unity. |
 
@@ -140,7 +140,7 @@ Put it on the beam object (or a child) and it is picked up automatically, or add
 
 ## Tests
 
-120 EditMode tests.
+121 EditMode tests.
 
 `Assets/ARBeam/Tests/EditMode/` (105):
 
@@ -159,9 +159,9 @@ Put it on the beam object (or a child) and it is picked up automatically, or add
 - **SolverPropertyTests**: equilibrium, dM/dx = V and dv/dx = θ, support conditions, superposition, peak
   finding against dense sampling, diagram steps, input validation.
 
-`Assets/HoloMech/Tests/EditMode/` (15): cm/GPa → SI, "upward is positive" → solver sign, material buttons,
+`Assets/HoloMech/Tests/EditMode/` (16): cm/GPa → SI, "upward is positive" → solver sign, material buttons,
 section dimensions, unstable supports and bad loads reported before solving; extrusion outlines (box, I, pipe)
-have the same area and I as the section properties the solver uses.
+have the same area and I as the section properties the solver uses; dependent section limits.
 
 Run them in **Window ▸ General ▸ Test Runner ▸ EditMode**, or without Unity:
 
@@ -188,7 +188,7 @@ unity command eval -- --code "return BeamSceneSetup.SetUpAllScenes();" --timeout
 
 ## Not done yet
 
-- HoloMech reproduction milestones M4–M5 (stress view, device).
+- HoloMech reproduction milestone M5 (XR interaction and a device).
 - Cross-check against the Python package IndeterminateBeam (Bonanno 2021).
 - Load input from tracked weight markers (rig option B) or hand interaction (headset option A).
 - A simply supported scene (the solver and tests already cover it).

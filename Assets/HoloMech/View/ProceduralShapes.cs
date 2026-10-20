@@ -108,5 +108,95 @@ namespace HoloMech
             m.SetShaderPassEnabled("ShadowCaster", false);
             return m;
         }
+
+        /// <summary>Unlit colour (lines, labels' companions, diagram curves).</summary>
+        public static Material Unlit(Color color)
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            var m = new Material(shader) { color = color };
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
+            // Double-sided: a line that doubles back (a jump in a shear diagram) flips its triangle strip, and with
+            // back-face culling everything after the turn disappears.
+            if (m.HasProperty("_Cull")) m.SetFloat("_Cull", 0f);
+            if (color.a < 0.999f && m.HasProperty("_Surface"))
+            {
+                m.SetFloat("_Surface", 1f);
+                m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                m.SetFloat("_ZWrite", 0f);
+                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
+
+            return m;
+        }
+
+        /// <summary>A LineRenderer child in local space.</summary>
+        public static LineRenderer Line(Transform parent, string name, Material material, float width, IList<Vector3> points, bool loop = false)
+        {
+            var go = new GameObject(name, typeof(LineRenderer));
+            go.transform.SetParent(parent, false);
+            var lr = go.GetComponent<LineRenderer>();
+            lr.useWorldSpace = false;
+            lr.sharedMaterial = material;
+            lr.widthMultiplier = width;
+            lr.loop = loop;
+            lr.numCapVertices = 2;
+            lr.numCornerVertices = 2;
+            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            lr.receiveShadows = false;
+            // Zero-length segments (repeated points, e.g. both sides of a diagram key point that has no jump) break
+            // the line's triangle strip for every point after them, so drop exact repeats.
+            var clean = new List<Vector3>(points.Count);
+            foreach (var p in points)
+                if (clean.Count == 0 || (p - clean[clean.Count - 1]).sqrMagnitude > 1e-12f) clean.Add(p);
+            lr.positionCount = clean.Count;
+            lr.SetPositions(clean.ToArray());
+            return lr;
+        }
+
+        /// <summary>
+        /// A polyline in the local XY plane built as one quad per segment plus a small square at every vertex, so
+        /// joints stay filled whatever the angle (diagram jumps double back on themselves, which LineRenderer does
+        /// not draw reliably).
+        /// </summary>
+        public static GameObject PlanarPolyline(Transform parent, string name, Material material, float width, IList<Vector3> points)
+        {
+            var verts = new List<Vector3>();
+            var tris = new List<int>();
+            float h = width / 2;
+            void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+            {
+                int k = verts.Count;
+                verts.Add(a); verts.Add(b); verts.Add(c); verts.Add(d);
+                tris.Add(k); tris.Add(k + 1); tris.Add(k + 2);
+                tris.Add(k); tris.Add(k + 2); tris.Add(k + 3);
+            }
+
+            for (int i = 0; i + 1 < points.Count; i++)
+            {
+                Vector3 a = points[i], b = points[i + 1];
+                var dir = b - a;
+                dir.z = 0;
+                if (dir.sqrMagnitude < 1e-12f) continue;
+                var n = new Vector3(-dir.y, dir.x, 0).normalized * h;
+                Quad(a - n, a + n, b + n, b - n);
+            }
+
+            foreach (var p in points)
+                Quad(p + new Vector3(-h, -h, 0), p + new Vector3(-h, h, 0), p + new Vector3(h, h, 0), p + new Vector3(h, -h, 0));
+
+            var mesh = new Mesh { name = name, indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            mesh.SetVertices(verts);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(parent, false);
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
+            var r = go.GetComponent<MeshRenderer>();
+            r.sharedMaterial = material;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return go;
+        }
     }
 }

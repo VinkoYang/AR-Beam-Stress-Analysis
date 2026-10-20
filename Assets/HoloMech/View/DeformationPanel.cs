@@ -93,6 +93,7 @@ namespace HoloMech
             scaleSlider.onValueChanged.AddListener(v =>
             {
                 if (syncing || view == null) return;
+                view.AutoScale = false;
                 view.SetDeflectionScale(UiKit.LogToValue(v, HoloMechRanges.ScaleMin, HoloMechRanges.ScaleMax));
                 UpdateTexts();
             });

@@ -162,6 +162,20 @@ namespace HoloMech
             if (uniformLoad.endCm <= uniformLoad.startCm) uniformLoad.startCm = Math.Max(0f, uniformLoad.endCm - 1f);
         }
 
+        /// <summary>
+        /// Enforces the dependent section limits after a slider moved: pipe wall ≤ D/2, flange thickness &lt; h/2,
+        /// web ≤ flange width. Returns true if anything was changed.
+        /// </summary>
+        public bool ClampSectionDimensions()
+        {
+            bool changed = false;
+            if (pipe.wallCm > pipe.outerDiameterCm / 2f) { pipe.wallCm = pipe.outerDiameterCm / 2f; changed = true; }
+            float tfMax = iBeam.heightCm / 2f - 0.1f;
+            if (iBeam.flangeThicknessCm > tfMax) { iBeam.flangeThicknessCm = tfMax; changed = true; }
+            if (iBeam.webThicknessCm > iBeam.flangeWidthCm) { iBeam.webThicknessCm = iBeam.flangeWidthCm; changed = true; }
+            return changed;
+        }
+
         /// <summary>Input problems a panel should show before the solver runs. Empty list = fine.</summary>
         public List<string> Validate()
         {

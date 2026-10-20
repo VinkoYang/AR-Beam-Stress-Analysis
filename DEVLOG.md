@@ -2,6 +2,61 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-20 — HoloMech M4: Scene 5 stress profile, and the Workbench layout
+
+### Scene 5 (paper Fig. 7)
+
+- **`StressProfileView`**: the undeformed beam split at a movable section (opaque left part, the reference beam's
+  transparent material beyond the cut), the section outline at the cut, and what the cut shows, one at a time:
+  shear arrow (positive V acts down on the left part's face), moment arc with head (sagging = counter-clockwise),
+  or the normal-stress profile σ = −M·y/I as bars across the depth (tension red, compression blue, white envelope).
+  Under the beam, 3D shear (cyan) and moment (yellow) diagrams share an x axis in metres, each with its own axis of
+  nine values (shear left, moment right), faint grid, vertical titles, and a white marker at the cut.
+- **`StressPanel`**: Deformation / Stress tabs, "Section cut at (cm)" slider, vertical green → red colour bar with
+  a pointer and the value at the cut (V in N, M in N·m, σmax in MPa; range = that quantity along the beam), switches
+  for the two diagrams and radio-style switches for Shear Force / Bending Moment / Normal Stress, pin and back.
+- Tabs switch Scene 4 ⇄ 5 both ways; Back returns to the inputs.
+
+### Workbench layout (PI request, 2026-10-20)
+
+"The three screens should not be a hierarchy: all visible at once, adjustable on the fly." Added
+**`WorkbenchLayout`** and made it the default; the paper's flow stays as **Guided** (button at the bottom switches).
+
+- Left panel: section (segmented Pipe / Box / I-Beam with its dimension sliders inline), boundary conditions
+  (segmented Free / Pinned / Fixed per end), length, E and material buttons. Right panel: point and uniform loads.
+  Cards collapse; each side panel slides away with the tab on its inner edge, and the 3D view and result menu grow to
+  use the freed space.
+- Any change re-solves on the next frame. Problems (unstable supports, bad loads) appear in a red banner at the
+  top and the last valid beam stays; fixing the input clears it. The deflection scale follows the 10 % rule until
+  the user moves its slider.
+- The camera now looks straight along +Z and is offset so the content fills the free part of the screen (between
+  the side panels, above the result menu); it re-frames on layout and state changes.
+- Section limits moved into `HoloMechInputs.ClampSectionDimensions()` (shared by the popup and the workbench; one
+  new test).
+
+### Verification
+
+- Screenshots at 1920 × 1080: workbench in Scene 4 and Scene 5, panels open and collapsed, all three cut modes.
+- Fixed–fixed steel pipe, 2000 N down at 1 m and 2000 N/m up on 1–1.5 m: shear diagram jumps −2000 N at 1 m, rises
+  1000 N over the uniform load, then stays at −320.3 N (matches `Diagram()` values); V at a 1.3 m cut = −720.3 N on
+  the pointer.
+- Script through real buttons, Guided layout: simply supported, 2000 N at midspan → V just right of the cut at
+  1 m = −1000 N, M = PL/4 = 1000 N·m; tabs switch both ways; Back keeps inputs. Workbench: clicking Free / Pinned
+  shows the unstable-beam banner, clicking Fixed clears it and re-solves as Fixed–Pinned.
+- 121 EditMode tests pass.
+
+### Bugs found
+
+- LineRenderer could not draw a diagram that doubles back on itself (a shear jump): the strip flips and back-face
+  culling hid everything after the jump; with culling off it still dropped segments. Diagram curves are now planar
+  meshes (one quad per segment plus a square at each vertex); line materials are double-sided; repeated points are
+  dropped before reaching LineRenderer.
+- Fold markers ▾ / ▸ are not in the Inter atlas; headers use − / +.
+
+### Open
+
+M5: XR interaction (world-space menus, XRI UI input, pin / follow), XR Interaction Simulator in the Editor, device.
+
 ## 2026-10-19 — HoloMech M3: input flow (Scenes 2, 2.a–c, 3) and stability error
 
 `HoloMechApp` is now the state controller: BeamInfo → Loading → Deformation, Back from each, all in one Unity scene

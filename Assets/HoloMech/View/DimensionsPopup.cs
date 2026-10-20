@@ -123,15 +123,13 @@ namespace HoloMech
         void Refresh()
         {
             syncing = true;
+            inputs.ClampSectionDimensions();
             switch (inputs.section)
             {
                 case SectionType.Pipe:
-                    inputs.pipe.wallCm = Mathf.Min(inputs.pipe.wallCm, inputs.pipe.outerDiameterCm / 2f);
                     Mirror(1, inputs.pipe.wallCm);
                     break;
                 case SectionType.IBeam:
-                    inputs.iBeam.flangeThicknessCm = Mathf.Min(inputs.iBeam.flangeThicknessCm, inputs.iBeam.heightCm / 2f - 0.1f);
-                    inputs.iBeam.webThicknessCm = Mathf.Min(inputs.iBeam.webThicknessCm, inputs.iBeam.flangeWidthCm);
                     Mirror(2, inputs.iBeam.flangeThicknessCm);
                     Mirror(3, inputs.iBeam.webThicknessCm);
                     break;

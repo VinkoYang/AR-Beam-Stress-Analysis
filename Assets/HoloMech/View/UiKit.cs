@@ -279,6 +279,43 @@ namespace HoloMech
             label.text = string.Format(System.Globalization.CultureInfo.InvariantCulture, format, value);
         }
 
+        /// <summary>
+        /// Row of mutually exclusive buttons (segmented control). Returns a setter that highlights an index without
+        /// raising <paramref name="onChanged"/>.
+        /// </summary>
+        public static Action<int> Segmented(UiTheme t, Transform parent, string name, string[] options, int selected, Action<int> onChanged)
+        {
+            var row = Rect(name, parent);
+            var buttons = new Button[options.Length];
+            for (int i = 0; i < options.Length; i++)
+            {
+                int k = i;
+                var b = Button(t, row, options[i], options[i], t.captionSize + 2);
+                var r = b.GetComponent<RectTransform>();
+                r.anchorMin = new Vector2((float)i / options.Length, 0);
+                r.anchorMax = new Vector2((float)(i + 1) / options.Length, 1);
+                r.offsetMin = new Vector2(i == 0 ? 0 : 4, 0);
+                r.offsetMax = new Vector2(i == options.Length - 1 ? 0 : -4, 0);
+                b.onClick.AddListener(() => { Highlight(k); onChanged?.Invoke(k); });
+                buttons[i] = b;
+            }
+
+            Highlight(selected);
+            return Highlight;
+
+            void Highlight(int index)
+            {
+                for (int i = 0; i < buttons.Length; i++)
+                {
+                    var c = buttons[i].colors;
+                    c.normalColor = i == index ? t.accent : t.panelRaised;
+                    c.selectedColor = c.normalColor;
+                    c.highlightedColor = i == index ? t.accent : t.panelHover;
+                    buttons[i].colors = c;
+                }
+            }
+        }
+
         /// <summary>Slider position 0..1 ↔ value on a log scale (for the deflection scale).</summary>
         public static float LogToValue(float t01, float min, float max) => Mathf.Exp(Mathf.Lerp(Mathf.Log(min), Mathf.Log(max), t01));
 

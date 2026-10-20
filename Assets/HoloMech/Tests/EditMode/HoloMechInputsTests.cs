@@ -121,5 +121,23 @@ namespace HoloMech.Tests
             Assert.That(a.pointLoad.forceN, Is.EqualTo(2000f));
             Assert.That(a.pipe.wallCm, Is.EqualTo(2.6f));
         }
+
+        [Test]
+        public void SectionLimitsAreEnforced()
+        {
+            var i = new HoloMechInputs();
+            i.pipe.outerDiameterCm = 4; i.pipe.wallCm = 3;
+            i.iBeam.heightCm = 6; i.iBeam.flangeThicknessCm = 4; i.iBeam.flangeWidthCm = 3; i.iBeam.webThicknessCm = 3;
+            Assert.That(i.ClampSectionDimensions(), Is.True);
+            Assert.That(i.pipe.wallCm, Is.EqualTo(2f));
+            Assert.That(i.iBeam.flangeThicknessCm, Is.LessThan(3f));
+            Assert.That(i.iBeam.webThicknessCm, Is.LessThanOrEqualTo(3f));
+            Assert.That(i.ClampSectionDimensions(), Is.False, "already valid");
+            foreach (var type in new[] { SectionType.Pipe, SectionType.IBeam })
+            {
+                i.section = type;
+                Assert.DoesNotThrow(() => i.SectionProperties(), type.ToString());
+            }
+        }
     }
 }

@@ -32,9 +32,12 @@ namespace HoloMech
         }
 
         /// <param name="unitsPerMetre">Scene units per real metre; the section is scaled like the length.</param>
-        public static BeamMeshBuilder Build(SectionProfile profile, double lengthMetres, float unitsPerMetre, int segments = 240)
+        /// <param name="startMetres">Where this piece starts along the beam (pieces either side of a section cut).</param>
+        public static BeamMeshBuilder Build(SectionProfile profile, double lengthMetres, float unitsPerMetre, int segments = 240,
+            double startMetres = 0)
         {
             float length = (float)lengthMetres * unitsPerMetre;
+            float x0 = (float)startMetres * unitsPerMetre;
             var verts = new List<Vector3>();
             var stations = new List<float>();
             var tris = new List<int>();
@@ -52,7 +55,7 @@ namespace HoloMech
                     for (int c = 0; c < columns; c++)
                     {
                         int k = loop.Smooth ? c : (c / 2 + (c % 2)) % n;
-                        verts.Add(new Vector3(f * length, (float)loop.V[k] * unitsPerMetre, (float)loop.U[k] * unitsPerMetre));
+                        verts.Add(new Vector3(x0 + f * length, (float)loop.V[k] * unitsPerMetre, (float)loop.U[k] * unitsPerMetre));
                         stations.Add(f);
                     }
                 }
@@ -82,7 +85,7 @@ namespace HoloMech
                 int start = tris.Count;
                 for (int i = 0; i < profile.CapU.Count; i++)
                 {
-                    verts.Add(new Vector3(f * length, (float)profile.CapV[i] * unitsPerMetre, (float)profile.CapU[i] * unitsPerMetre));
+                    verts.Add(new Vector3(x0 + f * length, (float)profile.CapV[i] * unitsPerMetre, (float)profile.CapU[i] * unitsPerMetre));
                     stations.Add(f);
                     tris.Add(verts.Count - 1);
                 }

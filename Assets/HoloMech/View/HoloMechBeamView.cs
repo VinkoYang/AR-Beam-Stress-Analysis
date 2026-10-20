@@ -37,7 +37,7 @@ namespace HoloMech
         readonly List<GameObject> uniformArrows = new List<GameObject>();
 
         float deflectionScale = 1f;
-        bool showDeformation = true, showLoading = true;
+        bool showDeformation = true, showLoading = true, stressMode;
         string builtSignature;
 
         /// <summary>Raised after a successful solve.</summary>
@@ -47,9 +47,29 @@ namespace HoloMech
         public event Action<string> SolveFailed;
 
         public HoloMechInputs Inputs => inputs;
+
+        /// <summary>Outline of the current section (metres), as drawn.</summary>
+        public SectionProfile Profile { get; private set; }
+
+        /// <summary>Material of the semi-transparent reference beam (reused for the far side of a section cut).</summary>
+        public Material GhostMaterial => ghostMaterial;
+        public Material SupportMaterial => supportMaterial;
+
+        /// <summary>
+        /// Scene 5: hides the deflected and reference beams (the stress view draws the undeformed beam cut in two);
+        /// supports and loads stay.
+        /// </summary>
+        public bool StressMode
+        {
+            get => stressMode;
+            set { stressMode = value; ApplyVisibility(); }
+        }
         public BeamSolution Solution { get; private set; }
         public float DisplayUnitsPerMetre { get; private set; } = 1f;
         public float DeflectionScale => deflectionScale;
+
+        /// <summary>True until the user moves the scale slider: the scale then follows each new solution (10 % rule).</summary>
+        public bool AutoScale { get; set; } = true;
         public float DisplayLength => displayLength;
 
         /// <summary>Largest |w| in metres under the current loads, the figure the panel shows.</summary>
@@ -189,6 +209,7 @@ namespace HoloMech
         void BuildMeshes()
         {
             var profile = SectionProfile.For(inputs);
+            Profile = profile;
             if (deformed != null) Destroy(deformed.Mesh);
             if (ghost != null) Destroy(ghost.Mesh);
             deformed = BeamMeshBuilder.Build(profile, inputs.LengthM, DisplayUnitsPerMetre);
@@ -285,7 +306,8 @@ namespace HoloMech
 
         void ApplyVisibility()
         {
-            if (deformedFilter != null) deformedFilter.gameObject.SetActive(showDeformation);
+            if (deformedFilter != null) deformedFilter.gameObject.SetActive(showDeformation && !stressMode);
+            if (ghostFilter != null) ghostFilter.gameObject.SetActive(!stressMode);
             if (loadsRoot != null) loadsRoot.gameObject.SetActive(showLoading);
         }
 
