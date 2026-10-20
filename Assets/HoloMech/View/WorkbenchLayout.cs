@@ -215,7 +215,7 @@ namespace HoloMech
         /// <summary>Caption on the left, segmented buttons on the right.</summary>
         Action<int> Choice(RectTransform parent, string caption, string[] options, int selected, Action<int> set)
         {
-            var row = UiKit.Rect(caption, parent);
+            var row = UiKit.Rect(string.IsNullOrEmpty(caption) ? "Choice" : caption, parent);
             Height(row.gameObject, 48);
             if (!string.IsNullOrEmpty(caption))
             {

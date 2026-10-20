@@ -67,36 +67,54 @@ public static class BeamUiStyler
         Panel(backdrop, t.backdrop, rounded: false);
 
         var card = Child(root, "Card", 1);
-        Place(card, Center, Center, Vector2.zero, new Vector2(760, 680));
+        Place(card, Center, Center, Vector2.zero, new Vector2(760, 800));
         Panel(card, t.panel);
 
         var title = root.Find("Text (TMP)");
         if (title != null)
         {
             var r = (RectTransform)title;
-            Place(r, Center, Center, new Vector2(0, 240), new Vector2(680, 72));
+            Place(r, Center, Center, new Vector2(0, 300), new Vector2(680, 72));
             Text(title, "Beam Learning Module", t.bold, t.displaySize, t.textPrimary, TextAlignmentOptions.Center);
         }
 
         var subtitle = root.Find("Text (TMP) (1)");
         if (subtitle != null)
         {
-            Place((RectTransform)subtitle, Center, Center, new Vector2(0, 160), new Vector2(640, 70));
+            Place((RectTransform)subtitle, Center, Center, new Vector2(0, 220), new Vector2(640, 70));
             Text(subtitle, "Choose a beam, load it, and see shear, bending moment, stress and deflection.",
                 t.regular, 22, t.textSecondary, TextAlignmentOptions.Center, wrap: true);
         }
 
-        MenuButton(root, "One Fixed End", 40, "One fixed end", "Cantilever, 400 mm");
-        MenuButton(root, "Overhanging Beam", -72, "Overhanging beam", "800 mm on supports at 200 and 600 mm");
-        MenuButton(root, "Two Fixed Ends", -184, "Two fixed ends", "Clamped–clamped, 800 mm (virtual only)");
+        MenuButton(root, "One Fixed End", 100, "One fixed end", "Cantilever, 400 mm");
+        MenuButton(root, "Overhanging Beam", -12, "Overhanging beam", "800 mm on supports at 200 and 600 mm");
+        MenuButton(root, "Two Fixed Ends", -124, "Two fixed ends", "Clamped–clamped, 800 mm (virtual only)");
+        EnsureHoloMechButton(root);
+        MenuButton(root, "HoloMech", -236, "HoloMech", "Any section, supports and loads; stress view");
 
         var footer = Child(root, "Footer");
-        Place(footer, Center, Center, new Vector2(0, -290), new Vector2(680, 30));
+        Place(footer, Center, Center, new Vector2(0, -350), new Vector2(680, 30));
         Text(footer, "6061-T6 aluminium bar, 25.4 × 3.2 mm  ·  closed-form Euler–Bernoulli beam theory",
             t.regular, 16, t.textSecondary, TextAlignmentOptions.Center);
 
         EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
         return "MainMenu: restyled";
+    }
+
+    /// <summary>Fourth menu button, a copy of an existing one re-wired to <see cref="LoadSceneButton"/>.</summary>
+    static void EnsureHoloMechButton(Transform root)
+    {
+        if (root.Find("HoloMech") != null) return;
+        var template = root.Find("Two Fixed Ends");
+        if (template == null) return;
+        var copy = Object.Instantiate(template.gameObject, root);
+        copy.name = "HoloMech";
+        foreach (var mb in copy.GetComponents<MonoBehaviour>())
+            if (!(mb is Button) && !(mb is Image)) Object.DestroyImmediate(mb);
+        var button = copy.GetComponent<Button>();
+        button.onClick = new Button.ButtonClickedEvent();
+        var loader = copy.AddComponent<LoadSceneButton>();
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(button.onClick, loader.Load);
     }
 
     static void MenuButton(Transform root, string name, float y, string label, string caption)

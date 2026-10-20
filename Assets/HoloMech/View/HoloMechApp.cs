@@ -40,6 +40,9 @@ namespace HoloMech
         [SerializeField] Camera viewCamera;
         [SerializeField] AppLayout layout = AppLayout.Workbench;
 
+        [Tooltip("Mixed reality: panels on a world-space board in front of the user, XRI input, pin / follow (milestone 5).")]
+        [SerializeField] bool worldSpace;
+
         [Tooltip("Guided layout only: where to start. Deformation starts from the inputs set on the beam view (demos).")]
         [SerializeField] AppState startState = AppState.BeamInfo;
 
@@ -53,6 +56,7 @@ namespace HoloMech
         WorkbenchLayout workbench;
         ErrorPopup error;
         Button layoutButton;
+        XRPresentation xr;
         bool dirty, switching;
 
         public AppState State { get; private set; }
@@ -89,6 +93,16 @@ namespace HoloMech
             layoutButton = UiKit.Button(theme, canvas.transform, "Layout", "", theme.captionSize + 2);
             layoutButton.GetComponent<RectTransform>().Place(new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 8), new Vector2(300, 48));
             layoutButton.onClick.AddListener(() => SetLayout(layout == AppLayout.Workbench ? AppLayout.Guided : AppLayout.Workbench));
+
+            if (worldSpace)
+            {
+                xr = gameObject.AddComponent<XRPresentation>();
+                xr.Setup(canvas, beamView);
+            }
+
+            deformation.pinButton.onClick.AddListener(TogglePin);
+            stress.pinButton.onClick.AddListener(TogglePin);
+            UpdatePinLabels();
 
             info.SectionChosen += _ => dimensions.Show();
             info.nextButton.onClick.AddListener(OnInfoNext);
@@ -140,6 +154,24 @@ namespace HoloMech
             {
                 workbench.ShowProblems(null);
                 Go(state ?? AppState.BeamInfo);
+            }
+        }
+
+        /// <summary>Pin button: pinned = the board stays put; follow = it stays in front of the user (XR only).</summary>
+        void TogglePin()
+        {
+            if (xr == null) return;
+            xr.TogglePin();
+            UpdatePinLabels();
+        }
+
+        void UpdatePinLabels()
+        {
+            string label = xr == null ? "Pin" : xr.Pinned ? "Pinned" : "Follow";
+            foreach (var b in new[] { deformation.pinButton, stress.pinButton })
+            {
+                b.GetComponentInChildren<TMPro.TMP_Text>().text = label;
+                b.interactable = xr != null;
             }
         }
 
@@ -215,12 +247,18 @@ namespace HoloMech
             FrameCamera();
         }
 
-        /// <summary>Guided: bottom-right as in the paper. Workbench: bottom centre between the side panels, scaled down.</summary>
+        /// <summary>
+        /// True when the result menu sits bottom-right as in the paper: always in Guided, and in the Workbench once both
+        /// side panels are collapsed. Otherwise it sits bottom-centre between the panels.
+        /// </summary>
+        bool MenuInCorner => layout == AppLayout.Guided || (workbench.LeftCollapsed && workbench.RightCollapsed);
+
         void PlaceResultMenus(bool guided)
         {
+            bool corner = MenuInCorner;
             foreach (var r in new[] { (RectTransform)deformation.transform, (RectTransform)stress.transform })
             {
-                if (guided)
+                if (corner)
                 {
                     r.anchorMin = r.anchorMax = new Vector2(1, 0);
                     r.pivot = new Vector2(1, 0);
@@ -229,10 +267,10 @@ namespace HoloMech
                 }
                 else
                 {
+                    // Between the panels; full size once one side panel is out of the way.
                     r.anchorMin = r.anchorMax = new Vector2(0.5f, 0);
                     r.pivot = new Vector2(0.5f, 0);
                     r.anchoredPosition = new Vector2(0, 64);
-                    // Full size once a side panel is out of the way; smaller between two open panels.
                     bool roomy = workbench.FreeRight - workbench.FreeLeft > 0.6f;
                     r.localScale = Vector3.one * (roomy ? 1f : 0.74f);
                 }
@@ -246,6 +284,7 @@ namespace HoloMech
         /// </summary>
         public void FrameCamera()
         {
+            if (worldSpace) return; // in XR the user's head is the camera
             if (viewCamera == null) viewCamera = Camera.main;
             if (viewCamera == null || beamView == null) return;
             bool guided = layout == AppLayout.Guided;
@@ -256,11 +295,17 @@ namespace HoloMech
             float xMin = -D * (stressMode ? 0.2f : 0.08f), xMax = D * (stressMode ? 1.2f : 1.08f);
             float yMax = D * 0.22f, yMin = stressMode ? -D * 0.68f : -D * 0.22f;
 
-            // Free screen area as fractions of the screen.
+            // Free screen area as fractions of the screen. With the menu in the bottom-right corner the stress view uses
+            // the whole height to its left (as in the paper); otherwise the content sits above the menu.
             float x0 = guided ? 0.03f : workbench.FreeLeft + 0.01f;
             float x1 = guided ? 0.97f : workbench.FreeRight - 0.01f;
-            float y0 = guided ? 0.56f : 0.52f, y1 = 0.95f;
-            if (stressMode && guided) { x1 = 0.5f; y0 = 0.08f; }
+            float menuScale = ((RectTransform)deformation.transform).localScale.y;
+            float y0 = (64f + 580f * menuScale + 24f) / 1080f, y1 = 0.95f;
+            if (stressMode && MenuInCorner)
+            {
+                x1 = 1f - (48f + 940f + 90f) / 1920f; // clear of the menu and the moment-axis title
+                y0 = 0.06f;
+            }
 
             float tanV = Mathf.Tan(viewCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
             float tanH = tanV * viewCamera.aspect;

@@ -7,8 +7,44 @@ bending-moment diagrams, and the support reactions.
 
 The mechanics are exact Euler–Bernoulli closed-form solutions (Macaulay / singularity functions) for any set of
 pin and clamp supports, checked against Hibbeler's beam tables and against an independent stiffness-method solver.
-A reproduction of HoloMech (Amouzgar & Mousavi 2025) is being built in `Assets/HoloMech/` on the same solver. Milestones 1–4 are done (solver, deflection view, input panels with the stability check, stress view with diagrams and a section cut), with two layouts: **Workbench** (all panels on screen, the beam updates while you drag) and **Guided** (the paper's step-by-step flow); the scene is `Assets/HoloMech/Scenes/HoloMech.unity`; rebuild the scene with the menu **HoloMech ▸ Build Scene**.
+A reproduction of HoloMech (Amouzgar & Mousavi 2025) is being built in `Assets/HoloMech/` on the same solver. Milestones 1–5 are done in the Editor (solver, deflection view, input panels with the stability check, stress view with diagrams and a section cut, mixed-reality presentation); a device build is still open, with two layouts: **Workbench** (all panels on screen, the beam updates while you drag) and **Guided** (the paper's step-by-step flow); the scene is `Assets/HoloMech/Scenes/HoloMech.unity`; rebuild the scene with the menu **HoloMech ▸ Build Scene**.
 Change history and design decisions are in [DEVLOG.md](DEVLOG.md).
+
+## Demo
+
+**HoloMech reproduction, Workbench layout.** Every input is on screen; the beam is re-solved while a slider moves
+(here the point load travels along a steel pipe fixed at both ends; colour = |deflection|).
+
+![Workbench: moving the point load re-solves the beam live](Docs/media/holomech-workbench-live.gif)
+
+**Changing the section and supports.** Pipe → box → I-beam, then cantilever, Pinned–Free (unstable: the banner
+explains why and the last valid beam stays), simply supported, an upward uniform load, and back to fixed–fixed.
+
+![Section and boundary changes, with the stability check](Docs/media/holomech-inputs.gif)
+
+**Stress profile (paper Fig. 7).** The section cut moves along the beam; the part beyond the cut turns
+transparent; the cut shows the shear force, then the bending moment, then the normal-stress distribution, with the
+colour-bar pointer reading the value at the cut. Shear (cyan) and moment (yellow) diagrams below share the x axis.
+
+![Section cut moving along the beam](Docs/media/holomech-stress-cut.gif)
+
+**Original rig scene, now on beam theory.** 6061-T6 bar, 400 mm cantilever: mass 0 → 500 g at the tip, then the
+load moves toward the clamp. Deflection is drawn at true δ/L; colour is |M|c/I on a fixed scale (46 MPa = 500 g at
+the tip).
+
+![Cantilever scene: mass and position sliders](Docs/media/rig-cantilever.gif)
+
+| | |
+|---|---|
+| ![Main menu](Docs/media/main-menu.png) | ![Overhanging beam with live V and M diagrams](Docs/media/rig-overhang-diagrams.png) |
+| Main menu | Overhanging beam, 500 g at the tip, live V and M diagrams |
+| ![Guided layout, Scene 2](Docs/media/holomech-guided-scene2.png) | ![Guided layout, unstable supports](Docs/media/holomech-guided-unstable.png) |
+| HoloMech Guided layout (the paper's flow), Scene 2 | Free–Pinned supports: the app refuses and explains |
+| ![Mixed-reality board in XR Simulation](Docs/media/holomech-xr-simulation.png) | |
+| HoloMech XR scene in the Editor (XR Simulation): the panels on a world-space board, the beam hologram in front | |
+
+The GIFs are recorded with Unity Recorder (`HoloMech ▸` scripts `DemoDriver` + `DemoRecorder`, 30 fps MP4 →
+ffmpeg → GIF), so they show the real UI being driven, not mock-ups.
 
 ## Requirements
 
@@ -71,7 +107,7 @@ Editor tools (menu **ARBeam ▸ UI**), both re-runnable:
 | `Assets/ARBeam/Editor/` | Assembly-CSharp-Editor | `BeamSceneSetup`: menu **ARBeam ▸ Set Up Beam Scenes** wires the three scenes. Idempotent. |
 | `Assets/ARBeam/Tests/EditMode/` | `ARBeam.Mechanics.Tests` | 105 NUnit tests (see below). |
 | `Assets/HoloMech/Model/` | `HoloMech.Model` (`noEngineReferences: true`) | `HoloMechInputs`: the HoloMech panels' values (cm, N, N/m, GPa, upward positive) and their conversion to an SI `BeamModel`. |
-| `Assets/HoloMech/View/` | `HoloMech.View` | Scene 4 view: `HoloMechBeamView` (grey reference beam, deflected beam coloured by \|w\|, supports, load arrows), `BeamMeshBuilder` (section extrusion, 240 stations), `DeformationPanel`, `UiKit` (themed controls from code); Workbench layout: `WorkbenchLayout` (collapsible side panels, live re-solve, problem banner); Guided layout: `BeamInfoScreen` (Scene 2), `DimensionsPopup` (2.a–c, live cross-section preview), `LoadingScreen` (Scene 3), `ErrorPopup`; Scene 5: `StressProfileView` (3D V and M diagrams, section cut with shear arrow / moment arc / σ profile) and `StressPanel` (cut slider, colour bar and pointer, five switches); `HoloMechApp` is the state controller. |
+| `Assets/HoloMech/View/` | `HoloMech.View` | Scene 4 view: `HoloMechBeamView` (grey reference beam, deflected beam coloured by \|w\|, supports, load arrows), `BeamMeshBuilder` (section extrusion, 240 stations), `DeformationPanel`, `UiKit` (themed controls from code); Mixed reality: `XRPresentation` (world-space board, LazyFollow pin); demos: `DemoDriver`; Workbench layout: `WorkbenchLayout` (collapsible side panels, live re-solve, problem banner); Guided layout: `BeamInfoScreen` (Scene 2), `DimensionsPopup` (2.a–c, live cross-section preview), `LoadingScreen` (Scene 3), `ErrorPopup`; Scene 5: `StressProfileView` (3D V and M diagrams, section cut with shear arrow / moment arc / σ profile) and `StressPanel` (cut slider, colour bar and pointer, five switches); `HoloMechApp` is the state controller. |
 | `Assets/HoloMech/Tests/EditMode/` | `HoloMech.Tests` | 16 tests: unit and sign conversion, section outlines vs section properties. |
 | `Assets/*.cs` | Assembly-CSharp | The original scripts. `CantileverBeam`, `OverhangBeam`, `BeamBend` are now thin subclasses of `SliderDrivenBeam`, kept so the scenes' slider events still resolve. `DiagramPopup` toggles the live panel. |
 | `Tools/SolverTests/` | — | .NET project that compiles the solver and its tests outside Unity. |
@@ -176,6 +212,27 @@ unity command run_tests -- --mode EditMode --filter ARBeam.Mechanics.Tests --fil
 unity command run_tests -- --mode EditMode --filter HoloMech.Tests --filter_type assembly
 ```
 
+## Mixed reality and devices (HoloMech milestone 5)
+
+`Assets/HoloMech/Scenes/HoloMechXR.unity` runs the same app in world space (`XRPresentation`): the panels sit on a
+board about 2 m wide, 2.6 m in front of the user, with the beam hologram (0.7 m) in front of the board's free centre.
+UI input goes through XRI (`XRUIInputModule` + `TrackedDeviceGraphicRaycaster`), so phone touch (the AR rig's
+screen-space ray interactor) and headset rays or pokes both work; nothing depends on MRTK. **Pin** toggles XRI's
+`LazyFollow`: pinned, the board stays put; **Follow**, it drifts back in front of the user. The main menu's
+**HoloMech** button loads `HoloMech` on a PC and `HoloMechXR` on a phone or headset.
+
+In the Editor, press Play in `HoloMechXR`: XR Simulation provides the camera (right mouse + WASD to move).
+
+Building for a device (not done yet; the PI picks the device):
+
+1. **Android phone / tablet (ARCore):** Unity Hub → Installs → 6000.5.3f1 → Add modules → *Android Build Support*
+   with OpenJDK and Android SDK & NDK. Build Profiles → Android → Switch. XR Plug-in Management → Android: ARCore
+   (already enabled). Player: IL2CPP, ARM64, minimum API 24 or as ARCore requires. The scenes are in the build list.
+2. **Quest 3:** additionally add the OpenXR package with the Meta Quest feature and XR Hands, and swap the AR rig in
+   `HoloMechXR` for the XRI sample's `XR Origin (XR Rig)` (already in the project).
+3. Before a player build, replace the runtime-created materials (`ProceduralShapes.Lit/Unlit/Transparent`) with
+   material assets, or add the URP Lit / Unlit shaders to *Always Included Shaders*, so they are not stripped.
+
 ## Re-running the scene setup
 
 `BeamSceneSetup` sets the beam parameters, adds the components, sets the mass slider to 0–500 g, builds the live
@@ -188,7 +245,7 @@ unity command eval -- --code "return BeamSceneSetup.SetUpAllScenes();" --timeout
 
 ## Not done yet
 
-- HoloMech reproduction milestone M5 (XR interaction and a device).
+- A device build and on-device test of the HoloMech XR scene (device to be chosen; Android module not installed).
 - Cross-check against the Python package IndeterminateBeam (Bonanno 2021).
 - Load input from tracked weight markers (rig option B) or hand interaction (headset option A).
 - A simply supported scene (the solver and tests already cover it).

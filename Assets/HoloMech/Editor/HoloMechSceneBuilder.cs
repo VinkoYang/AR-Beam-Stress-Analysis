@@ -15,6 +15,63 @@ using UnityEngine.Rendering.Universal;
 public static class HoloMechSceneBuilder
 {
     public const string ScenePath = "Assets/HoloMech/Scenes/HoloMech.unity";
+    public const string XRScenePath = "Assets/HoloMech/Scenes/HoloMechXR.unity";
+    const string ArRigPrefab = "Assets/Samples/XR Interaction Toolkit/3.1.2/AR Starter Assets/Prefabs/XR Origin (AR Rig).prefab";
+
+    [MenuItem("HoloMech/Build XR Scene")]
+    static void BuildXRMenu()
+    {
+        if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) BuildXR();
+    }
+
+    /// <summary>
+    /// Mixed-reality scene: the project's AR rig (phone AR; swap for an XR rig on a headset), AR Session, XRI UI input,
+    /// and the app in world-space mode. In the Editor it runs under XR Simulation.
+    /// </summary>
+    public static string BuildXR()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(XRScenePath));
+        UiThemeBuilder.LoadOrBuild();
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        var theme = AssetDatabase.LoadAssetAtPath<UiTheme>(UiThemeBuilder.ThemePath);
+
+        var rig = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(ArRigPrefab));
+        rig.transform.position = Vector3.zero;
+        new GameObject("AR Session", typeof(UnityEngine.XR.ARFoundation.ARSession), typeof(UnityEngine.XR.ARFoundation.ARInputManager));
+        new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem), typeof(UnityEngine.XR.Interaction.Toolkit.UI.XRUIInputModule));
+
+        var lightGo = new GameObject("Directional Light", typeof(Light), typeof(UniversalAdditionalLightData));
+        lightGo.transform.rotation = Quaternion.Euler(40, -30, 0);
+        lightGo.GetComponent<Light>().type = LightType.Directional;
+
+        var beamGo = new GameObject("HoloMech Beam");
+        var view = beamGo.AddComponent<HoloMechBeamView>();
+        view.SetMaterials(AssetDatabase.LoadAssetAtPath<Material>("Assets/BeamStressMaterial.mat"), null, null, null, null);
+        var vso = new SerializedObject(view);
+        vso.FindProperty("buildOnStart").boolValue = false;
+        vso.ApplyModifiedPropertiesWithoutUndo();
+
+        var app = new GameObject("HoloMech App").AddComponent<HoloMechApp>();
+        var so = new SerializedObject(app);
+        so.FindProperty("theme").objectReferenceValue = theme;
+        so.FindProperty("beamView").objectReferenceValue = view;
+        so.FindProperty("viewCamera").objectReferenceValue = rig.GetComponentInChildren<Camera>();
+        so.FindProperty("worldSpace").boolValue = true;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.SaveScene(scene, XRScenePath);
+        AddToBuild(ScenePath);
+        AddToBuild(XRScenePath);
+        return $"Saved {XRScenePath}";
+    }
+
+    static void AddToBuild(string path)
+    {
+        var list = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        if (list.Exists(s => s.path == path)) return;
+        list.Add(new EditorBuildSettingsScene(path, true));
+        EditorBuildSettings.scenes = list.ToArray();
+    }
 
     [MenuItem("HoloMech/Build Scene")]
     static void BuildMenu()

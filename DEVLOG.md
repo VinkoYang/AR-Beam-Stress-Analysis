@@ -2,6 +2,52 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-20 — HoloMech M5 (mixed reality, Editor), README demos, repository tidy-up
+
+### Repository
+
+At the PI's request `main` now holds our work: it was fast-forwarded from the student's initial commit to the
+development branch (no force push), the student's original commit is tagged `student-original`, and
+`wenhao/solver` was deleted locally and on GitHub. Work continues on `main`.
+
+Side effect: the checkout rewrote scene files' line endings while the Editor had one open, which raised a modal
+"scene(s) modified externally" dialog and blocked every CLI call until the PI clicked Reload.
+
+### M5: mixed-reality presentation
+
+- **`XRPresentation`**: turns the app canvas into a world-space board (1920 px → 2.1 m), parents the beam hologram
+  (0.7 m long) in front of the board's free centre, adds `TrackedDeviceGraphicRaycaster`, and puts a `LazyFollow` on
+  the board. Pin buttons on both result menus now toggle Pinned / Follow. The board is placed 2.6 m in front of the
+  head after 15 frames (LazyFollow snaps to its own default offset when added, and XR Simulation / tracking sets the
+  head pose during the first frames).
+- **`HoloMechXR.unity`** (built by **HoloMech ▸ Build XR Scene**): the project's XRI 3.1.2 sample AR rig, AR Session,
+  `EventSystem` + `XRUIInputModule`, light, beam, app with `worldSpace = true`. Both HoloMech scenes were added to the
+  build list.
+- Main menu: a fourth button **HoloMech** (`LoadSceneButton`) loads `HoloMech` on a PC and `HoloMechXR` on a phone or
+  headset.
+- Checked in Play mode under XR Simulation: canvas world-space, two raycasters, input module `XRUIInputModule`; the
+  board appears in front of the user; after Unpin and moving the user 3 m sideways and turning 60°, the board
+  followed to the new position.
+- Not done: a device build and test. The Android module is not installed yet; README lists the steps for an ARCore
+  phone and for Quest 3 (OpenXR + Meta feature + XR Hands, swap to the XR rig). Runtime-created materials must
+  become assets (or their shaders always included) before a player build.
+
+### Layout fixes found while recording
+
+- The free area for the 3D view now starts above the result menu's actual height (it overlapped the diagrams at
+  16:9 when the menu was full size).
+- With both side panels collapsed, the result menu moves to the bottom-right (as in the paper) and the stress view
+  uses the full height to its left.
+- Rows of segmented buttons without a caption are named "Choice" (an empty object name broke `GameObject.Find`).
+
+### README demos
+
+Four GIFs (Workbench live update, section and support changes with the stability banner, the moving section cut,
+the student's cantilever scene) and five stills in `Docs/media`. Recorded with **Unity Recorder 5.1.7** (package
+added): `DemoDriver` drives the real UI along a timeline in game time; `DemoRecorder` captures the Game view at a
+constant 30 fps to MP4; ffmpeg converts to 15 fps GIF. A first attempt that captured one screenshot per CLI call was
+slower and choppier; the PI suggested Recorder.
+
 ## 2026-10-20 — HoloMech M4: Scene 5 stress profile, and the Workbench layout
 
 ### Scene 5 (paper Fig. 7)

@@ -17,6 +17,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_ARMarker/Scenes/BeamScene 2.unity
     guid: ab08ab778fb085c4db37900b226a9e37
+  - enabled: 1
+    path: Assets/HoloMech/Scenes/HoloMech.unity
+    guid: bb3865a14529b35459c63c22ca2a2697
+  - enabled: 1
+    path: Assets/HoloMech/Scenes/HoloMechXR.unity
+    guid: 6f967920a63034e4bbaeb29fefbd7b98
   m_configObjects:
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 6ee72d15cf39dd748a13eac57397b9af, type: 2}
     UnityEditor.XR.ARKit.ARKitSettings: {fileID: 11400000, guid: 0465d33c6aee55f44b0237db8b0e0259, type: 2}
