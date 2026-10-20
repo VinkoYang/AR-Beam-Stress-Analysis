@@ -65,7 +65,33 @@ public static class HoloMechSceneBuilder
         return $"Saved {XRScenePath}";
     }
 
-    static void AddToBuild(string path)
+    const string RuntimeMaterialFolder = "Assets/HoloMech/Resources/" + ProceduralShapes.TemplateFolder;
+
+    /// <summary>
+    /// Saves one template per runtime material kind under Resources, so device builds keep the URP Lit / Unlit
+    /// shaders with the opaque, transparent and double-sided variants that <see cref="ProceduralShapes"/> uses.
+    /// </summary>
+    [MenuItem("HoloMech/Build Runtime Materials")]
+    public static string BuildRuntimeMaterials()
+    {
+        Directory.CreateDirectory(RuntimeMaterialFolder);
+        Save("Lit", ProceduralShapes.Lit(Color.white));
+        Save("LitTransparent", ProceduralShapes.Transparent(new Color(1, 1, 1, 0.5f)));
+        Save("Unlit", ProceduralShapes.Unlit(Color.white));
+        Save("UnlitTransparent", ProceduralShapes.Unlit(new Color(1, 1, 1, 0.5f)));
+        AssetDatabase.SaveAssets();
+        return $"Saved runtime materials in {RuntimeMaterialFolder}";
+
+        static void Save(string kind, Material m)
+        {
+            string path = $"{RuntimeMaterialFolder}/{kind}.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) { EditorUtility.CopySerialized(m, existing); EditorUtility.SetDirty(existing); }
+            else AssetDatabase.CreateAsset(m, path);
+        }
+    }
+
+    internal static void AddToBuild(string path)
     {
         var list = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         if (list.Exists(s => s.path == path)) return;

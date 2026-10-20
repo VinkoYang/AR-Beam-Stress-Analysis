@@ -14,6 +14,12 @@ namespace HoloMech
     /// </summary>
     public static class UiKit
     {
+        /// <summary>
+        /// When set (Quest build), controls are instantiated from Meta's UI Set prefabs instead of drawn by UiKit.
+        /// Layout and the returned Unity UI components (Button, Toggle, Slider) are the same either way.
+        /// </summary>
+        public static MetaUiSkin Skin;
+
         public static RectTransform Rect(string name, Transform parent)
         {
             var go = new GameObject(name, typeof(RectTransform));
@@ -98,6 +104,7 @@ namespace HoloMech
 
         public static Button Button(UiTheme t, Transform parent, string name, string text, float fontSize = 0)
         {
+            if (Skin != null && (Skin.secondaryButton != null || Skin.primaryButton != null)) return MetaButton(t, parent, name, text, fontSize);
             var img = Panel(t, parent, name, Color.white);
             img.raycastTarget = true;
             var b = img.gameObject.AddComponent<Button>();
@@ -117,6 +124,8 @@ namespace HoloMech
         /// <summary>A row-sized switch: caption on the left, pill switch on the right. Returns the Toggle.</summary>
         public static Toggle Switch(UiTheme t, Transform parent, string name, string caption, bool on, Color? rowColor = null)
         {
+            if (Skin != null && Skin.switchToggle != null)
+                return MetaToggleRow(t, parent, name, caption, on, Skin.switchToggle, null, 0, new Vector2(40, 24), 1.6f);
             var row = Panel(t, parent, name, rowColor ?? t.panelRaised);
             row.raycastTarget = true;
             var label = Label(t, row.transform, "Caption", caption, t.medium, t.labelSize, t.textPrimary, TextAlignmentOptions.MidlineLeft);
@@ -152,6 +161,7 @@ namespace HoloMech
         /// <summary>Horizontal slider with a track, accent fill and round handle. Linear or logarithmic.</summary>
         public static Slider Slider(UiTheme t, Transform parent, string name, float min, float max, float value)
         {
+            if (Skin != null && Skin.slider != null) return MetaSlider(parent, name, min, max, value);
             var root = Rect(name, parent);
             root.gameObject.AddComponent<RectTransform>();
 
@@ -204,6 +214,8 @@ namespace HoloMech
         /// </summary>
         public static Toggle Checkbox(UiTheme t, Transform parent, string name, string caption, bool on, ToggleGroup group = null, float fontSize = 0)
         {
+            if (Skin != null && Skin.checkbox != null)
+                return MetaToggleRow(t, parent, name, caption, on, Skin.checkbox, group, fontSize, new Vector2(16, 16), 2.2f);
             var row = Panel(t, parent, name, t.panelRaised);
             row.raycastTarget = true;
             var label = Label(t, row.transform, "Caption", caption, t.medium, fontSize > 0 ? fontSize : t.labelSize, t.textPrimary, TextAlignmentOptions.MidlineLeft);
@@ -285,6 +297,7 @@ namespace HoloMech
         /// </summary>
         public static Action<int> Segmented(UiTheme t, Transform parent, string name, string[] options, int selected, Action<int> onChanged)
         {
+            if (Skin != null && Skin.choiceButton != null) return MetaSegmented(t, parent, name, options, selected, onChanged);
             var row = Rect(name, parent);
             var buttons = new Button[options.Length];
             for (int i = 0; i < options.Length; i++)
@@ -314,6 +327,182 @@ namespace HoloMech
                     buttons[i].colors = c;
                 }
             }
+        }
+
+        // ------------------------------------------------------------------ Meta UI Set (Quest)
+
+        static GameObject Spawn(GameObject prefab, Transform parent, string name)
+        {
+            var go = UnityEngine.Object.Instantiate(prefab, parent, false);
+            go.name = name;
+            foreach (var tr in go.GetComponentsInChildren<Transform>(true)) tr.gameObject.layer = parent.gameObject.layer;
+            return go;
+        }
+
+        /// <summary>
+        /// UI Set buttons are laid out for a 133x48 button with a 14-px label beside an icon. Our panels size buttons
+        /// by anchors (46-px rows, tall side tabs), so the inner layout groups are switched off, the plate stretches
+        /// to the button and the label fills it, centred, at our font size. The placeholder icon is hidden.
+        /// </summary>
+        static void FitButton(GameObject go, string text, float fontSize)
+        {
+            foreach (var group in go.GetComponentsInChildren<LayoutGroup>(true)) group.enabled = false;
+            foreach (var element in go.GetComponentsInChildren<LayoutElement>(true))
+                if (element.gameObject != go) element.ignoreLayout = true;
+
+            TMP_Text label = null;
+            foreach (var tr in go.GetComponentsInChildren<RectTransform>(true))
+            {
+                if (tr.gameObject == go) continue;
+                switch (tr.name)
+                {
+                    case "Content":
+                    case "Background":
+                    case "Text":
+                        tr.Stretch();
+                        break;
+                    case "Elements":
+                        tr.Stretch(new Vector2(8, 0), new Vector2(-8, 0));
+                        break;
+                    case "Icon":
+                    case "Gap":
+                    case "Space":
+                    case "Subtitle":
+                    case "Label (1)":
+                        tr.gameObject.SetActive(false);
+                        break;
+                    case "Label":
+                        label = tr.GetComponent<TMP_Text>();
+                        break;
+                }
+            }
+
+            if (label == null) label = go.GetComponentInChildren<TMP_Text>(true);
+            if (label == null) return;
+            label.rectTransform.Stretch();
+            label.text = text;
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.enableAutoSizing = true;
+            label.fontSizeMax = fontSize;
+            label.fontSizeMin = 12;
+            label.fontSize = fontSize;
+        }
+
+        static Button MetaButton(UiTheme t, Transform parent, string name, string text, float fontSize)
+        {
+            // Grey (secondary) plates for the many panel buttons; the white primary plate is Quest's single call to action.
+            var go = Spawn(Skin.secondaryButton != null ? Skin.secondaryButton : Skin.primaryButton, parent, name);
+            FitButton(go, text, fontSize > 0 ? fontSize : t.buttonSize);
+            return go.GetComponent<Button>();
+        }
+
+        /// <summary>Caption row (our panel and label) with a UI Set switch or check box on the right.</summary>
+        static Toggle MetaToggleRow(UiTheme t, Transform parent, string name, string caption, bool on, GameObject prefab, ToggleGroup group,
+            float fontSize, Vector2 nativeSize, float scale)
+        {
+            var row = Panel(t, parent, name, t.panelRaised);
+            var label = Label(t, row.transform, "Caption", caption, t.medium, fontSize > 0 ? fontSize : t.labelSize, t.textPrimary, TextAlignmentOptions.MidlineLeft);
+            label.rectTransform.Stretch(new Vector2(20, 0), new Vector2(-96, 0));
+            label.textWrappingMode = TextWrappingModes.Normal;
+            label.enableAutoSizing = true;
+            label.fontSizeMax = fontSize > 0 ? fontSize : t.labelSize;
+            label.fontSizeMin = 14;
+
+            var go = Spawn(prefab, row.transform, "Control");
+            var r = (RectTransform)go.transform;
+            r.Place(new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-20, 0), nativeSize);
+            r.localScale = Vector3.one * scale * Skin.controlScale;
+            var inner = go.GetComponent<Toggle>();
+            inner.isOn = on;
+
+            // The returned Toggle sits on the row (callers lay out and group the row); the UI Set control mirrors it,
+            // and a click on either changes both.
+            row.raycastTarget = true;
+            var toggle = row.gameObject.AddComponent<Toggle>();
+            toggle.targetGraphic = row;
+            toggle.transition = Selectable.Transition.None;
+            toggle.group = group;
+            toggle.isOn = on;
+            bool syncing = false;
+            toggle.onValueChanged.AddListener(v =>
+            {
+                if (syncing) return;
+                syncing = true;
+                inner.isOn = v;
+                syncing = false;
+            });
+            inner.onValueChanged.AddListener(v =>
+            {
+                if (syncing) return;
+                syncing = true;
+                toggle.isOn = v;
+                if (toggle.isOn != v) inner.isOn = toggle.isOn; // a group refused to switch the row off
+                syncing = false;
+            });
+            return toggle;
+        }
+
+        /// <summary>Marks one button of a set as chosen (accent colour; with the Meta skin, the others are dimmed).</summary>
+        public static void SetHighlighted(UiTheme t, Button b, bool on)
+        {
+            if (Skin != null && (Skin.secondaryButton != null || Skin.primaryButton != null))
+            {
+                var group = b.GetComponent<CanvasGroup>();
+                if (group == null) group = b.gameObject.AddComponent<CanvasGroup>();
+                group.alpha = on ? 1f : 0.45f;
+                return;
+            }
+
+            var c = b.colors;
+            c.normalColor = on ? t.accent : t.panelRaised;
+            c.selectedColor = c.normalColor;
+            b.colors = c;
+            var img = b.GetComponent<Image>();
+            if (img != null) img.color = Color.white;
+        }
+
+        static Slider MetaSlider(Transform parent, string name, float min, float max, float value)
+        {
+            var go = Spawn(Skin.slider, parent, name);
+            var s = go.GetComponent<Slider>();
+            s.minValue = min;
+            s.maxValue = max;
+            s.SetValueWithoutNotify(value);
+            return s;
+        }
+
+        static Action<int> MetaSegmented(UiTheme t, Transform parent, string name, string[] options, int selected, Action<int> onChanged)
+        {
+            var row = Rect(name, parent);
+            var group = row.gameObject.AddComponent<ToggleGroup>();
+            group.allowSwitchOff = false;
+            var toggles = new Toggle[options.Length];
+            bool quiet = false;
+            for (int i = 0; i < options.Length; i++)
+            {
+                int k = i;
+                var go = Spawn(Skin.choiceButton, row, options[i]);
+                FitButton(go, options[i], t.captionSize + 2);
+                var r = (RectTransform)go.transform;
+                r.anchorMin = new Vector2((float)i / options.Length, 0);
+                r.anchorMax = new Vector2((float)(i + 1) / options.Length, 1);
+                r.pivot = new Vector2(0.5f, 0.5f);
+                r.offsetMin = new Vector2(i == 0 ? 0 : 3, 0);
+                r.offsetMax = new Vector2(i == options.Length - 1 ? 0 : -3, 0);
+                var tg = go.GetComponent<Toggle>();
+                tg.group = group;
+                tg.isOn = i == selected;
+                tg.onValueChanged.AddListener(on => { if (on && !quiet) onChanged?.Invoke(k); });
+                toggles[i] = tg;
+            }
+
+            return index =>
+            {
+                quiet = true;
+                for (int i = 0; i < toggles.Length; i++) toggles[i].isOn = i == index;
+                quiet = false;
+            };
         }
 
         /// <summary>Slider position 0..1 ↔ value on a log scale (for the deflection scale).</summary>

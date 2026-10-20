@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb58d66231feff7428c64f9d3b5e26d4, type: 3}
+  m_Name: MetaUiSkin
+  m_EditorClassIdentifier: HoloMech.View::HoloMech.MetaUiSkin
+  primaryButton: {fileID: 243424268127923124, guid: 708bb04189b8488418aa725e7f94bbe8, type: 3}
+  secondaryButton: {fileID: 8427117777238694044, guid: b9b87f4caa5968745bb0a1ee2a51f575, type: 3}
+  choiceButton: {fileID: 4102898763052618297, guid: 5292db714b0f87045a7dfd9be93b1be5, type: 3}
+  switchToggle: {fileID: 6244658300373328758, guid: c1fa15e93b3d0324ebb8093dc8db35b9, type: 3}
+  checkbox: {fileID: 746620542841046277, guid: 6cd57a5c754c63047822347680b4bbd2, type: 3}
+  slider: {fileID: 9107191726271971607, guid: 60baedd9cb4e7b644b0cd0c793d8bc7a, type: 3}
+  controlScale: 1

@@ -43,6 +43,13 @@ namespace HoloMech
         [Tooltip("Mixed reality: panels on a world-space board in front of the user, XRI input, pin / follow (milestone 5).")]
         [SerializeField] bool worldSpace;
 
+        [Tooltip("Optional world-space canvas prepared in the scene (Quest: with Meta ray and poke canvas interaction). " +
+                 "Empty: the app creates its own canvas.")]
+        [SerializeField] Canvas boardCanvas;
+
+        [Tooltip("Optional: build the controls from Meta's UI Set prefabs (Quest scene).")]
+        [SerializeField] MetaUiSkin uiSkin;
+
         [Tooltip("Guided layout only: where to start. Deformation starts from the inputs set on the beam view (demos).")]
         [SerializeField] AppState startState = AppState.BeamInfo;
 
@@ -80,7 +87,8 @@ namespace HoloMech
             stressView = beamView.gameObject.GetComponent<StressProfileView>() ?? beamView.gameObject.AddComponent<StressProfileView>();
             stressView.Initialise(beamView, theme);
 
-            var canvas = UiKit.ScreenCanvas("HoloMech UI", transform);
+            UiKit.Skin = uiSkin;
+            var canvas = boardCanvas != null ? boardCanvas : UiKit.ScreenCanvas("HoloMech UI", transform);
             info = BeamInfoScreen.Create(theme, canvas.transform, inputs);
             loading = LoadingScreen.Create(theme, canvas.transform, inputs);
             workbench = WorkbenchLayout.Create(theme, canvas.transform, inputs, () => dirty = true);
@@ -96,7 +104,8 @@ namespace HoloMech
 
             if (worldSpace)
             {
-                xr = gameObject.AddComponent<XRPresentation>();
+                xr = GetComponent<XRPresentation>();
+                if (xr == null) xr = gameObject.AddComponent<XRPresentation>();
                 xr.Setup(canvas, beamView);
             }
 
@@ -118,6 +127,11 @@ namespace HoloMech
             beamView.Solved += _ => { if (State == AppState.Stress) stressView.Rebuild(); };
 
             SetLayout(layout, fromView ? startState : (AppState?)null);
+        }
+
+        void OnDestroy()
+        {
+            if (UiKit.Skin == uiSkin) UiKit.Skin = null;
         }
 
         void Update()

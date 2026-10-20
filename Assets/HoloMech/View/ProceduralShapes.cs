@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -82,11 +83,25 @@ namespace HoloMech
             return m;
         }
 
+        /// <summary>Folder under Resources with one material per kind (see HoloMechSceneBuilder.BuildRuntimeMaterials).</summary>
+        public const string TemplateFolder = "HoloMechMaterials";
+
+        /// <summary>
+        /// Copies a template material from Resources when there is one: a player build keeps only the shaders and
+        /// keyword variants that some asset uses, so materials made from <see cref="Shader.Find"/> alone would render
+        /// pink on a device. Without templates (Editor, first run) the shader is looked up by name.
+        /// </summary>
+        static Material FromTemplate(string kind, Func<Shader> fallback)
+        {
+            var template = Resources.Load<Material>(TemplateFolder + "/" + kind);
+            return template != null ? new Material(template) : new Material(fallback());
+        }
+
         /// <summary>Lit URP material with a flat colour (falls back to Unlit, then Standard).</summary>
         public static Material Lit(Color color, float smoothness = 0.3f)
         {
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Standard");
-            var m = new Material(shader) { color = color };
+            var m = FromTemplate("Lit", () => Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Standard"));
+            m.color = color;
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smoothness);
             return m;
@@ -95,7 +110,10 @@ namespace HoloMech
         /// <summary>Lit URP material, alpha-blended (reference geometry that must not hide what is behind it).</summary>
         public static Material Transparent(Color color)
         {
-            var m = Lit(color, 0.2f);
+            var m = FromTemplate("LitTransparent", () => Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            m.color = color;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.2f);
             if (!m.HasProperty("_Surface")) return m;
             m.SetFloat("_Surface", 1f);
             m.SetFloat("_Blend", 0f);
@@ -112,8 +130,8 @@ namespace HoloMech
         /// <summary>Unlit colour (lines, labels' companions, diagram curves).</summary>
         public static Material Unlit(Color color)
         {
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
-            var m = new Material(shader) { color = color };
+            var m = FromTemplate(color.a < 0.999f ? "UnlitTransparent" : "Unlit", () => Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
+            m.color = color;
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
             // Double-sided: a line that doubles back (a jump in a shear diagram) flips its triangle strip, and with
             // back-face culling everything after the turn disappears.

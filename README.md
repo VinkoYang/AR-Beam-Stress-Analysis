@@ -53,7 +53,8 @@ ffmpeg → GIF), so they show the real UI being driven, not mock-ups.
 | Unity | **6000.5.3f1** (Unity 6.5). The project was upgraded from 2022.3.62f3 on 2026-10-19. |
 | Key packages | AR Foundation / ARCore / ARKit 6.5.0, XR Interaction Toolkit 3.5.1, URP 17.5.0, Input System 1.19.0, Test Framework 1.7.0, uGUI 2.5.0 (includes TextMesh Pro) |
 | Optional | `com.unity.pipeline` (lets the [Unity CLI](https://unity.com) drive the open Editor); .NET 8 SDK to run the solver tests without Unity |
-| Device builds | Android Build Support is **not** set up yet; add it in Unity Hub before building for a tablet. |
+| Quest 3 | Meta XR Core SDK, Meta XR Interaction SDK and its OVR integration (Building Blocks) 207.0.1, OpenXR 1.18.0 |
+| Device builds | Android Build Support with OpenJDK and SDK is installed; the NDK r27c is set by path (see [Quest 3](#quest-3)). The active platform is **Android**. |
 
 ## Scenes
 
@@ -223,15 +224,40 @@ screen-space ray interactor) and headset rays or pokes both work; nothing depend
 
 In the Editor, press Play in `HoloMechXR`: XR Simulation provides the camera (right mouse + WASD to move).
 
-Building for a device (not done yet; the PI picks the device):
+### Quest 3
 
-1. **Android phone / tablet (ARCore):** Unity Hub → Installs → 6000.5.3f1 → Add modules → *Android Build Support*
-   with OpenJDK and Android SDK & NDK. Build Profiles → Android → Switch. XR Plug-in Management → Android: ARCore
-   (already enabled). Player: IL2CPP, ARM64, minimum API 24 or as ARCore requires. The scenes are in the build list.
-2. **Quest 3:** additionally add the OpenXR package with the Meta Quest feature and XR Hands, and swap the AR rig in
-   `HoloMechXR` for the XRI sample's `XR Origin (XR Rig)` (already in the project).
-3. Before a player build, replace the runtime-created materials (`ProceduralShapes.Lit/Unlit/Transparent`) with
-   material assets, or add the URP Lit / Unlit shaders to *Always Included Shaders*, so they are not stripped.
+`Assets/HoloMech/Scenes/HoloMechQuest.unity` is the headset version, built from Meta's **Building Blocks** and
+**UI Set** by **HoloMech ▸ Build Quest Scene** (`HoloMechQuestSceneBuilder`):
+
+| Part | What it is |
+|---|---|
+| Camera Rig | `OVRCameraRig` + `OVRManager` (Building Block) |
+| Interactions Rig | Interaction SDK rig: hands and controllers, ray, poke, grab, locomotion (Building Block) |
+| Passthrough | `OVRPassthroughLayer` underlay: the app is mixed reality, the room stays visible (Building Block) |
+| Board | World-space canvas, 1.8 m wide, 1.6 m in front of the user, with Meta's ray and poke canvas interaction (Interaction SDK Quick Actions) and `PointableCanvasModule` |
+| Controls | Meta Horizon OS **UI Set** prefabs: grey buttons, toggle tiles for choices, switches, check boxes, sliders (`MetaUiSkin` asset in `Assets/HoloMech/Quest/`) |
+| Theme | `UiTheme_Quest.asset`: the shared theme with Quest system colours (neutral dark plates, Meta blue) |
+
+The panels' code is unchanged: `UiKit` builds each control from the UI Set prefab when `UiKit.Skin` is set
+(`HoloMechApp.uiSkin`), and from its own drawing otherwise, so the PC and student scenes keep the Inter theme.
+Board placement, Pin / Follow and the beam hologram (0.5 m on Quest) are the same `XRPresentation` as above.
+
+Project settings for Quest (done): platform Android; XR Plug-in Management → Android: **OpenXR** only (ARCore off),
+with the Meta XR feature, Meta Quest support, and the Oculus Touch / Touch Plus / hand interaction profiles; Meta's
+Project Setup Tool fixes applied (Linear colour space, minimum API 32, ASTC, GameActivity, passthrough support,
+hands and controllers, and so on). Editor Play mode still uses the Standalone settings (XR Simulation), so the PC
+scenes behave as before.
+
+To build: plug in the Quest 3 (developer mode on), **File ▸ Build Profiles ▸ Android ▸ Build And Run** with
+`HoloMechQuest` ticked (first in the list if it should start directly). Android Build Support's NDK did not install
+under `Program Files` (no write permission) and was unpacked by hand; its path is set in **Preferences ▸ External
+Tools ▸ Android NDK** to `…\AndroidPlayer\NDK\android-ndk-r27c`. That setting is per machine.
+
+Phones (ARCore) can still use `HoloMechXR`; re-enable ARCore under XR Plug-in Management → Android first.
+
+Runtime materials (arrows, supports, diagram lines, the ghost beam) copy templates from
+`Assets/HoloMech/Resources/HoloMechMaterials/` (**HoloMech ▸ Build Runtime Materials**), so a player build keeps the
+URP Lit / Unlit shader variants they need.
 
 ## Re-running the scene setup
 
@@ -245,8 +271,8 @@ unity command eval -- --code "return BeamSceneSetup.SetUpAllScenes();" --timeout
 
 ## Not done yet
 
-- A device build and on-device test of the HoloMech XR scene (device to be chosen; Android module not installed).
+- A Quest 3 build and on-device test of `HoloMechQuest` (scene and project settings are ready; needs the headset).
 - Cross-check against the Python package IndeterminateBeam (Bonanno 2021).
 - Load input from tracked weight markers (rig option B) or hand interaction (headset option A).
 - A simply supported scene (the solver and tests already cover it).
-- Android build setup; AR placement of the virtual beam.
+- AR placement of the virtual beam on a phone.

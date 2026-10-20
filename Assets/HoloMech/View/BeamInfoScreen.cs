@@ -181,15 +181,7 @@ namespace HoloMech
         {
             var presets = new[] { MaterialPreset.Steel, MaterialPreset.Concrete, MaterialPreset.Wood, MaterialPreset.Custom };
             for (int i = 0; i < 4; i++)
-            {
-                var img = materialButtons[i].GetComponent<Image>();
-                bool on = inputs.material == presets[i];
-                var c = materialButtons[i].colors;
-                c.normalColor = on ? t.accent : t.panelRaised;
-                c.selectedColor = c.normalColor;
-                materialButtons[i].colors = c;
-                img.color = Color.white;
-            }
+                UiKit.SetHighlighted(t, materialButtons[i], inputs.material == presets[i]);
         }
 
         /// <summary>Refreshes every control from the inputs (after Back, or after a preset).</summary>

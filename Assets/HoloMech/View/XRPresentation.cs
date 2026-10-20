@@ -17,6 +17,9 @@ namespace HoloMech
         [Tooltip("Board width in metres (the 1920-px-wide canvas is scaled to this).")]
         [SerializeField] float boardWidth = 2.1f;
 
+        public Vector3 StartOffset { get => startOffset; set => startOffset = value; }
+        public float BeamLength { get => beamLength; set => beamLength = value; }
+
         [Tooltip("Where the board appears relative to the user's head on start: right, up, forward (m).")]
         [SerializeField] Vector3 startOffset = new Vector3(0f, -0.2f, 2.6f);
 
@@ -38,20 +41,31 @@ namespace HoloMech
             canvas = appCanvas;
             beam = beamView;
 
-            board = new GameObject("HoloMech Board").transform;
-            PlaceInFrontOfUser();
-
-            canvas.renderMode = RenderMode.WorldSpace;
-            var scaler = canvas.GetComponent<CanvasScaler>();
-            if (scaler != null) scaler.enabled = false;
             var rt = (RectTransform)canvas.transform;
-            rt.SetParent(board, false);
-            rt.sizeDelta = new Vector2(1920, 1080);
-            rt.localScale = Vector3.one * (boardWidth / 1920f);
-            rt.localPosition = Vector3.zero;
-            rt.localRotation = Quaternion.identity;
+            if (canvas.renderMode == RenderMode.WorldSpace && rt.parent != null)
+            {
+                // Board prepared in the scene (Quest): its canvas already carries the headset's UI interaction.
+                board = rt.parent;
+                boardWidth = rt.sizeDelta.x * rt.localScale.x;
+                PlaceInFrontOfUser();
+            }
+            else
+            {
+                board = new GameObject("HoloMech Board").transform;
+                PlaceInFrontOfUser();
+
+                canvas.renderMode = RenderMode.WorldSpace;
+                var scaler = canvas.GetComponent<CanvasScaler>();
+                if (scaler != null) scaler.enabled = false;
+                rt.SetParent(board, false);
+                rt.sizeDelta = new Vector2(1920, 1080);
+                rt.localScale = Vector3.one * (boardWidth / 1920f);
+                rt.localPosition = Vector3.zero;
+                rt.localRotation = Quaternion.identity;
+                if (canvas.GetComponent<TrackedDeviceGraphicRaycaster>() == null) canvas.gameObject.AddComponent<TrackedDeviceGraphicRaycaster>();
+            }
+
             canvas.worldCamera = Camera.main;
-            if (canvas.GetComponent<TrackedDeviceGraphicRaycaster>() == null) canvas.gameObject.AddComponent<TrackedDeviceGraphicRaycaster>();
 
             // Beam: in front of the board, centred over the free area (upper middle of the board).
             var bt = beam.transform;

@@ -141,7 +141,9 @@ namespace HoloMech
         {
             var go = GameObject.Find(path);
             if (go == null) { Debug.LogWarning($"DemoDriver: no button at '{path}'"); return; }
-            go.GetComponent<Button>().onClick.Invoke();
+            var b = go.GetComponent<Button>();
+            if (b != null) b.onClick.Invoke();
+            else go.GetComponent<UnityEngine.UI.Toggle>().isOn = true; // segmented option with the Meta UI Set skin
         }
 
         static void Toggle(string path, bool on)
