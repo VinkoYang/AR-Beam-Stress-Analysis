@@ -31,6 +31,9 @@ namespace HoloMech
         public const float LengthMinCm = 50f, LengthMaxCm = 500f;
         public const float ModulusMinGPa = 1f, ModulusMaxGPa = 250f;
         public const float ForceMaxN = 10000f;
+
+        /// <summary>Deflection scale slider range (log scale), spec §2.4.</summary>
+        public const float ScaleMin = 1f, ScaleMax = 100000f;
         public const float UniformMaxNPerM = 10000f;
 
         public const float PipeDiameterMinCm = 2f, PipeDiameterMaxCm = 30f;

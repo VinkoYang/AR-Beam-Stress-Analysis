@@ -2,6 +2,34 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-19 — HoloMech M2: beam mesh and Scene 4 (deformation view)
+
+Scene `Assets/HoloMech/Scenes/HoloMech.unity` (built by **HoloMech ▸ Build Scene**), inputs set in the Inspector to the
+paper's Fig. 5 case (steel pipe fixed at both ends, 2000 N down at 20 cm, 2000 N/m up from 60 to 150 cm).
+
+- `SectionProfile` (pure C#, `HoloMech.Model`): outline loops and end-cap triangles for pipe, box (hollow or solid)
+  and I; 7 new tests check that the outline's area and second moment equal the `BeamSection` values the solver uses
+  (exact for box and I, ≤ 0.4 % for the pipe polygon).
+- `BeamMeshBuilder`: extrudes the outline along +X with 240 stations; each station moves rigidly in Y by the deflection
+  (sections do not distort); vertex colours per station; face winding is fixed against the outline so holes and
+  outer walls face the right way.
+- `HoloMechBeamView`: grey semi-transparent reference beam, deflected beam coloured green → yellow → red by |w|
+  (own maximum by default, optional locked reference), supports (fixed = wall slab, pinned = triangular prism,
+  free = nothing; any support list works), yellow point-load arrow and a row of blue arrows for a uniform load, tip
+  on the beam surface, direction from the sign. Deflection scale defaults to a maximum of 10 % of the beam length
+  (spec §2.4), range 1–100000. Max deflection is the real value in cm.
+- `DeformationPanel` + `UiKit`: tabs (Stress tab disabled until M4), log-scale Deflection Scale slider, Deformation
+  and Loading switches, Max. Deflection text, pin and back buttons (not wired yet), all themed from `UiTheme`.
+- Verified in Play mode by screenshot: the Fig. 5 case, an I-beam fixed–pinned, a hollow box pinned–pinned.
+
+Fixes found on the way: the opaque reference beam hid the deflected one when it bent toward it (now alpha-blended);
+coplanar webs z-fought (reference beam is 1.2 % larger); a scene builder loaded the theme before `NewScene`, which
+can unload it (load after the switch).
+
+Open for M3+: input panels and the stability error popup, Scene 5, pin/back behaviour, XR input. Materials for the
+supports and arrows are created at runtime with `Shader.Find`; assign real material assets before a player build so
+the shader is not stripped.
+
 ## 2026-10-19 — UI layout and type redesign (before HoloMech M2)
 
 The PI tested in a 644 × 496 Game view and parts of the UI were off screen.
