@@ -2,6 +2,56 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-21 — Quest 3: first APK on a second machine, Android build profile, Editor Play over Link
+
+### Machine setup (per machine, not in the repository)
+
+- This machine had Unity 6000.5.3f1 with Windows support only. Installed with the Unity CLI:
+  `unity install-modules -e 6000.5.3f1 -m android android-sdk-ndk-tools android-open-jdk-17.0.18+8 --cm --accept-eula`
+  (Android Build Support, OpenJDK 17, SDK platforms 34/36, build/platform tools 36, NDK r27c, CMake). Here the NDK
+  installed under `Program Files` without the manual unpacking needed on the first machine; External Tools point to
+  the bundled SDK / NDK / JDK.
+- Fresh clone (no `Library/`), opened with `unity open . --build-target Android`; scripts compile.
+
+### Checks
+
+- XR Plug-in Management → Android: OpenXR loader only; Meta XR, Meta Quest Support, Touch, Touch Plus, Touch
+  proximity and hand interaction profiles enabled.
+- Meta Project Setup Tool (Android, read through `OVRProjectSetup.GetTasks` by reflection): 94 tasks, no Required
+  item outstanding. Recommended and left open: Platform SDK app ID and Data Use Checkup (no Platform SDK APIs used),
+  Meta XR Simulator not installed. ASTC is set on the build profile below.
+
+### Build profile
+
+- `Assets/Settings/Build Profiles/Android Quest 3.asset` (Android), made active. Own scene list:
+  `HoloMechQuest` first, then the global list in its existing order (nothing removed). The global
+  `EditorBuildSettings` scene list is unchanged, so PC / phone builds keep `MainMenu` first. Texture compression ASTC;
+  Release (not Development).
+- Built from the CLI (`BuildPipeline.BuildPlayer` with `BuildPlayerWithProfileOptions`): `Builds/HoloMechQuest.apk`,
+  about 85 MB, result Success. `*.apk` is git-ignored. Product name / package id are still the template's
+  ("Development Project", `com.unity.template.ar_mobile`); not changed.
+
+### Editor Play mode on the headset
+
+- Pressing Play did not show anything on the Quest: the Standalone loaders were XR Simulation first, and XR Management
+  starts the first loader that succeeds, so OpenXR never started. Standalone order is now **OpenXR, then XR
+  Simulation**: with Quest Link / Air Link up (Meta Horizon Link is the active OpenXR runtime on this machine) Play
+  runs on the headset; without a headset OpenXR fails to start and XR Simulation takes over as before.
+- PI tested on the Quest 3: runs well. Found: no depth occlusion (virtual content is drawn over real objects).
+
+### Other changes committed with this entry
+
+Made in the Editor or by Meta's setup tool during the session, not from the CLI, and committed at the PI's request:
+Android graphics API GLES3 → Vulkan, scripting defines `USE_INPUT_SYSTEM_POSE_CONTROL` /
+`USE_STICK_CONTROL_THUMBSTICKS`, `runInBackground` on, Android static batching, `OculusProjectConfig` device list,
+`OVRBuildConfig.asset`, re-serialisation of the three HoloMech scenes, URP / quality tweaks (MSAA 4x).
+`Assets/XR/APILayers~/` (Meta's OpenXR API layer DLL and logs, copied per machine) is now git-ignored.
+`Assets/HoloMech/Scenes/New Scene.unity` (an empty camera-rig scene) is left untracked.
+
+### Open
+
+- Depth occlusion; a draggable window holding the whole app (next entry).
+
 ## 2026-10-20 — Quest 3 preparation: Meta Building Blocks and UI Set
 
 The PI asked for a Quest 3 version with the UI from Meta's Building Blocks. Choices agreed: OpenXR with the Meta

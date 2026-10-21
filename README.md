@@ -54,7 +54,7 @@ ffmpeg → GIF), so they show the real UI being driven, not mock-ups.
 | Key packages | AR Foundation / ARCore / ARKit 6.5.0, XR Interaction Toolkit 3.5.1, URP 17.5.0, Input System 1.19.0, Test Framework 1.7.0, uGUI 2.5.0 (includes TextMesh Pro) |
 | Optional | `com.unity.pipeline` (lets the [Unity CLI](https://unity.com) drive the open Editor); .NET 8 SDK to run the solver tests without Unity |
 | Quest 3 | Meta XR Core SDK, Meta XR Interaction SDK and its OVR integration (Building Blocks) 207.0.1, OpenXR 1.18.0 |
-| Device builds | Android Build Support with OpenJDK and SDK is installed; the NDK r27c is set by path (see [Quest 3](#quest-3)). The active platform is **Android**. |
+| Device builds | Android Build Support with OpenJDK, SDK and NDK r27c (per machine, see [Quest 3](#quest-3)). The active platform is **Android**; the active build profile is **Android Quest 3**. |
 
 ## Scenes
 
@@ -241,17 +241,26 @@ In the Editor, press Play in `HoloMechXR`: XR Simulation provides the camera (ri
 The panels' code is unchanged: `UiKit` builds each control from the UI Set prefab when `UiKit.Skin` is set
 (`HoloMechApp.uiSkin`), and from its own drawing otherwise, so the PC and student scenes keep the Inter theme.
 Board placement, Pin / Follow and the beam hologram (0.5 m on Quest) are the same `XRPresentation` as above.
+In Editor Play mode without a headset, `HoloMechXR` still runs under XR Simulation (see the loader order below).
 
 Project settings for Quest (done): platform Android; XR Plug-in Management → Android: **OpenXR** only (ARCore off),
 with the Meta XR feature, Meta Quest support, and the Oculus Touch / Touch Plus / hand interaction profiles; Meta's
 Project Setup Tool fixes applied (Linear colour space, minimum API 32, ASTC, GameActivity, passthrough support,
-hands and controllers, and so on). Editor Play mode still uses the Standalone settings (XR Simulation), so the PC
-scenes behave as before.
+hands and controllers, and so on). Editor Play mode uses the Standalone settings: OpenXR (Quest Link) when a headset
+is connected through Link, otherwise XR Simulation, so the PC scenes behave as before.
 
-To build: plug in the Quest 3 (developer mode on), **File ▸ Build Profiles ▸ Android ▸ Build And Run** with
-`HoloMechQuest` ticked (first in the list if it should start directly). Android Build Support's NDK did not install
-under `Program Files` (no write permission) and was unpacked by hand; its path is set in **Preferences ▸ External
-Tools ▸ Android NDK** to `…\AndroidPlayer\NDK\android-ndk-r27c`. That setting is per machine.
+To build: plug in the Quest 3 (developer mode on, USB debugging allowed in the headset), **File ▸ Build Profiles ▸
+Android Quest 3 ▸ Build And Run**. The profile (`Assets/Settings/Build Profiles/Android Quest 3.asset`) has its own
+scene list with `HoloMechQuest` first (the other scenes follow, unchanged; the global list is untouched) and ASTC
+texture compression. Android Build Support, OpenJDK, SDK and NDK r27c are installed per machine
+(`unity install-modules -e 6000.5.3f1 -m android android-sdk-ndk-tools android-open-jdk-17.0.18+8 --cm`); on one
+machine the NDK could not be extracted under `Program Files` and was unpacked by hand, with its path set in
+**Preferences ▸ External Tools ▸ Android NDK**.
+
+To run from the Editor on the headset (Play mode over Quest Link or Air Link): the Meta Horizon Link app must be the
+active OpenXR runtime and the headset in Link. Standalone XR loaders are **OpenXR first, XR Simulation second**, so
+Play uses the headset when Link is up and falls back to XR Simulation otherwise. For passthrough and hands over Link,
+turn on **Developer Runtime Features** and **Passthrough over Meta Quest Link** in the Link app (Settings ▸ Beta).
 
 Phones (ARCore) can still use `HoloMechXR`; re-enable ARCore under XR Plug-in Management → Android first.
 
@@ -271,7 +280,7 @@ unity command eval -- --code "return BeamSceneSetup.SetUpAllScenes();" --timeout
 
 ## Not done yet
 
-- A Quest 3 build and on-device test of `HoloMechQuest` (scene and project settings are ready; needs the headset).
+- On-device test of `HoloMechQuest` (the APK builds; install and test on the headset still open).
 - Cross-check against the Python package IndeterminateBeam (Bonanno 2021).
 - Load input from tracked weight markers (rig option B) or hand interaction (headset option A).
 - A simply supported scene (the solver and tests already cover it).

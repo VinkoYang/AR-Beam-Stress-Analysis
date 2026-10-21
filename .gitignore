@@ -80,3 +80,6 @@ crashlytics-build.properties
 # Meta XR SDK per-machine telemetry/session ids
 /Assets/#Meta/
 /Assets/#Meta.meta
+
+# Meta OpenXR API layer copied per machine (DLL + logs)
+Assets/XR/APILayers~/
