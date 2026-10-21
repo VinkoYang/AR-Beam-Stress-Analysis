@@ -108,7 +108,7 @@ Editor tools (menu **ARBeam ▸ UI**), both re-runnable:
 | `Assets/ARBeam/Editor/` | Assembly-CSharp-Editor | `BeamSceneSetup`: menu **ARBeam ▸ Set Up Beam Scenes** wires the three scenes. Idempotent. |
 | `Assets/ARBeam/Tests/EditMode/` | `ARBeam.Mechanics.Tests` | 105 NUnit tests (see below). |
 | `Assets/HoloMech/Model/` | `HoloMech.Model` (`noEngineReferences: true`) | `HoloMechInputs`: the HoloMech panels' values (cm, N, N/m, GPa, upward positive) and their conversion to an SI `BeamModel`. |
-| `Assets/HoloMech/View/` | `HoloMech.View` | Scene 4 view: `HoloMechBeamView` (grey reference beam, deflected beam coloured by \|w\|, supports, load arrows), `BeamMeshBuilder` (section extrusion, 240 stations), `DeformationPanel`, `UiKit` (themed controls from code); Mixed reality: `XRPresentation` (world-space board, LazyFollow pin); demos: `DemoDriver`; Workbench layout: `WorkbenchLayout` (collapsible side panels, live re-solve, problem banner); Guided layout: `BeamInfoScreen` (Scene 2), `DimensionsPopup` (2.a–c, live cross-section preview), `LoadingScreen` (Scene 3), `ErrorPopup`; Scene 5: `StressProfileView` (3D V and M diagrams, section cut with shear arrow / moment arc / σ profile) and `StressPanel` (cut slider, colour bar and pointer, five switches); `HoloMechApp` is the state controller. |
+| `Assets/HoloMech/View/` | `HoloMech.View` | Scene 4 view: `HoloMechBeamView` (grey reference beam, deflected beam coloured by \|w\|, supports, load arrows), `BeamMeshBuilder` (section extrusion, 240 stations), `DeformationPanel`, `UiKit` (themed controls from code); Mixed reality: `XRPresentation` (world-space board, LazyFollow pin); Quest window: `XRWindowLayout`, `FaceUserGrabTransformer`, `GrabHandleVisual`; demos: `DemoDriver`; Workbench layout: `WorkbenchLayout` (collapsible side panels, live re-solve, problem banner); Guided layout: `BeamInfoScreen` (Scene 2), `DimensionsPopup` (2.a–c, live cross-section preview), `LoadingScreen` (Scene 3), `ErrorPopup`; Scene 5: `StressProfileView` (3D V and M diagrams, section cut with shear arrow / moment arc / σ profile) and `StressPanel` (cut slider, colour bar and pointer, five switches); `HoloMechApp` is the state controller. |
 | `Assets/HoloMech/Tests/EditMode/` | `HoloMech.Tests` | 16 tests: unit and sign conversion, section outlines vs section properties. |
 | `Assets/*.cs` | Assembly-CSharp | The original scripts. `CantileverBeam`, `OverhangBeam`, `BeamBend` are now thin subclasses of `SliderDrivenBeam`, kept so the scenes' slider events still resolve. `DiagramPopup` toggles the live panel. |
 | `Tools/SolverTests/` | — | .NET project that compiles the solver and its tests outside Unity. |
@@ -234,7 +234,7 @@ In the Editor, press Play in `HoloMechXR`: XR Simulation provides the camera (ri
 | Camera Rig | `OVRCameraRig` + `OVRManager` (Building Block) |
 | Interactions Rig | Interaction SDK rig: hands and controllers, ray, poke, grab, locomotion (Building Block) |
 | Passthrough | `OVRPassthroughLayer` underlay: the app is mixed reality, the room stays visible (Building Block) |
-| Board | World-space canvas, 1.8 m wide, 1.6 m in front of the user, with Meta's ray and poke canvas interaction (Interaction SDK Quick Actions) and `PointableCanvasModule` |
+| Window | `XRWindowLayout`: the whole app in one window, 1.8 m wide, 1.6 m in front of the user, centred 8 cm below eye height. Grab the pill-shaped handle under it (hand, controller or ray) to move it in 3D; the beam and all panels are children and move with it. The Beam panel, Load panel and result menu each have their own canvas and a handle on top: pull them anywhere, also outside the window. Anything moved keeps facing the user (`FaceUserGrabTransformer`, an Interaction SDK transformer). **Reset Layout** on the window bar puts the panels and the beam back and brings the window in front of the user. Every canvas has Meta's ray and poke canvas interaction, every handle Meta's grab and ray grab (Quick Actions); grabbing the window switches Follow to Pinned |
 | Controls | Meta Horizon OS **UI Set** prefabs: grey buttons, toggle tiles for choices, switches, check boxes, sliders (`MetaUiSkin` asset in `Assets/HoloMech/Quest/`) |
 | Theme | `UiTheme_Quest.asset`: the shared theme with Quest system colours (neutral dark plates, Meta blue) |
 
@@ -280,7 +280,8 @@ unity command eval -- --code "return BeamSceneSetup.SetUpAllScenes();" --timeout
 
 ## Not done yet
 
-- On-device test of `HoloMechQuest` (the APK builds; install and test on the headset still open).
+- Quest: depth occlusion (real objects in front of the beam or panels should hide them), with Meta's Depth API
+  (`EnvironmentDepthManager` and occlusion shaders for the beam materials and the UI). Planned, not started.
 - Cross-check against the Python package IndeterminateBeam (Bonanno 2021).
 - Load input from tracked weight markers (rig option B) or hand interaction (headset option A).
 - A simply supported scene (the solver and tests already cover it).

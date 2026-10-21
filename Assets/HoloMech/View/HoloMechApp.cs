@@ -50,6 +50,9 @@ namespace HoloMech
         [Tooltip("Optional: build the controls from Meta's UI Set prefabs (Quest scene).")]
         [SerializeField] MetaUiSkin uiSkin;
 
+        [Tooltip("Optional (Quest): a grabbable window whose panels can each be moved; see XRWindowLayout.")]
+        [SerializeField] XRWindowLayout windowLayout;
+
         [Tooltip("Guided layout only: where to start. Deformation starts from the inputs set on the beam view (demos).")]
         [SerializeField] AppState startState = AppState.BeamInfo;
 
@@ -107,6 +110,10 @@ namespace HoloMech
                 xr = GetComponent<XRPresentation>();
                 if (xr == null) xr = gameObject.AddComponent<XRPresentation>();
                 xr.Setup(canvas, beamView);
+                xr.PinnedChanged += UpdatePinLabels;
+                if (windowLayout != null)
+                    windowLayout.Attach(theme, workbench, (RectTransform)deformation.transform, (RectTransform)stress.transform,
+                                        canvas, xr, beamView.transform);
             }
 
             deformation.pinButton.onClick.AddListener(TogglePin);
@@ -174,9 +181,7 @@ namespace HoloMech
         /// <summary>Pin button: pinned = the board stays put; follow = it stays in front of the user (XR only).</summary>
         void TogglePin()
         {
-            if (xr == null) return;
-            xr.TogglePin();
-            UpdatePinLabels();
+            if (xr != null) xr.TogglePin(); // labels follow through PinnedChanged
         }
 
         void UpdatePinLabels()
@@ -242,6 +247,7 @@ namespace HoloMech
             deformation.gameObject.SetActive(state == AppState.Deformation);
             stress.gameObject.SetActive(state == AppState.Stress);
             beamView.gameObject.SetActive(result && beamView.Solution != null);
+            if (Detached) windowLayout.SetVisible(!guided, result);
 
             // Tabs mirror the state; assigning isOn restyles the switches, the guard stops it re-entering Go.
             switching = true;
@@ -267,8 +273,12 @@ namespace HoloMech
         /// </summary>
         bool MenuInCorner => layout == AppLayout.Guided || (workbench.LeftCollapsed && workbench.RightCollapsed);
 
+        /// <summary>Quest window: the panels and the result menu sit on their own canvases and are moved by hand.</summary>
+        bool Detached => windowLayout != null && windowLayout.Attached;
+
         void PlaceResultMenus(bool guided)
         {
+            if (Detached) return;
             bool corner = MenuInCorner;
             foreach (var r in new[] { (RectTransform)deformation.transform, (RectTransform)stress.transform })
             {

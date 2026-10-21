@@ -94,10 +94,17 @@ namespace HoloMech
         }
 
         /// <summary>Pin: stay put. Unpin: follow the user's head (lazily, as in MRTK's follow behaviour).</summary>
-        public void TogglePin()
+        public void TogglePin() => SetPinned(!pinned);
+
+        /// <summary>Raised when Pin / Follow changes (also when grabbing the Quest window pins it).</summary>
+        public event System.Action PinnedChanged;
+
+        public void SetPinned(bool value)
         {
-            pinned = !pinned;
+            if (pinned == value) return;
+            pinned = value;
             if (follow != null) follow.enabled = !pinned;
+            PinnedChanged?.Invoke();
         }
 
         /// <summary>Puts the board straight in front of the head, facing the user.</summary>

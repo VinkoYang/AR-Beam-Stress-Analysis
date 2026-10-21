@@ -37,6 +37,20 @@ namespace HoloMech
         public bool LeftCollapsed { get; private set; }
         public bool RightCollapsed { get; private set; }
 
+        /// <summary>The side panels (the Quest window moves them onto their own grabbable canvases).</summary>
+        public RectTransform LeftPanel => leftPanel;
+        public RectTransform RightPanel => rightPanel;
+
+        /// <summary>Quest window: the panels are moved by hand, so the collapse tabs are not shown.</summary>
+        public void HideCollapseButtons()
+        {
+            foreach (var name in new[] { "Collapse Beam Panel", "Collapse Load Panel" })
+            {
+                var b = transform.Find(name);
+                if (b != null) b.gameObject.SetActive(false);
+            }
+        }
+
         /// <summary>Free area for the 3D view, as fractions of the screen width.</summary>
         public float FreeLeft => LeftCollapsed ? 0.04f : CentreLeft;
         public float FreeRight => RightCollapsed ? 0.96f : CentreRight;

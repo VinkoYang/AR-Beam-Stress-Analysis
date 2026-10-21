@@ -9,7 +9,8 @@
         "Unity.TextMeshPro",
         "Unity.InputSystem",
         "Unity.XR.Interaction.Toolkit",
-        "Unity.XR.CoreUtils"
+        "Unity.XR.CoreUtils",
+        "Oculus.Interaction"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

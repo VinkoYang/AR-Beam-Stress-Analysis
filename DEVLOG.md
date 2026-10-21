@@ -2,6 +2,59 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-21 — Quest window: grabbable window, movable panels, Reset Layout
+
+PI's request after the first headset test: put the whole app into one window that can be dragged in 3D, with the
+beam and the parameter panels as children that follow it; each panel can also be moved on its own (also outside the
+window), freely in 3D and always facing the user; a Reset Layout button at window level. Built from the Interaction
+SDK (Grabbable, hand / controller grab, ray grab, ray and poke canvas interaction) and the UI Set controls.
+
+### Structure (`HoloMechQuestSceneBuilder`, scene rebuilt)
+
+```
+HoloMech Window            XRWindowLayout; LazyFollow (Pin / Follow) added at runtime by XRPresentation
+├ HoloMech UI              main canvas 1920×1080 → 1.8 m: guided screens, banner, popups, backplate
+├ Window Bar               title + Reset Layout (built at runtime with UiKit / UI Set)
+├ Grab Handle              pill under the window → moves the window
+├ Beam Panel Holder        own canvas 560×1032 + handle on top
+├ Load Panel Holder        own canvas 560×1032 + handle on top
+├ Result Menu Holder       own canvas 920×560 at 0.74 scale + handle on top
+└ HoloMech Beam            parented at runtime by XRPresentation
+```
+
+- Each handle: `BoxCollider` (a little larger than the pill), kinematic `Rigidbody`, `Grabbable` whose target is the
+  window or the holder, and Meta's `AddGrabInteraction` + `AddRayGrabInteraction`. Every canvas:
+  `AddRayCanvasInteraction` + `AddPokeCanvasInteraction`. Panel canvases sit 1 cm in front of the main canvas so rays
+  reach them first.
+- `FaceUserGrabTransformer` (ITransformer, one- and two-grab): the target follows the grab point and turns to face
+  the head (`LookRotation(target − head, up)`), so a panel never ends up edge-on. Grabbing the window pins it, so
+  Follow does not pull it back while it is held.
+- `GrabHandleVisual`: pill dim at rest, brighter and a little larger on hover, solid while grabbed (reads the
+  interactables' `WhenStateChanged`).
+- `XRWindowLayout.Attach` (called by `HoloMechApp` when `windowLayout` is set): moves the Workbench side panels and
+  the two result menus onto the holder canvases, hides the collapse tabs, adds the window backplate and bar, and
+  records the start pose of the holders and the beam. `ResetLayout` restores them and puts the window in front of
+  the user. Holders are shown only when their content is (side panels in the Workbench layout, the result menu on
+  the result screens).
+- Small API additions: `WorkbenchLayout.LeftPanel / RightPanel / HideCollapseButtons`,
+  `XRPresentation.SetPinned / PinnedChanged` (the Pin labels now follow that event). PC and phone scenes do not set
+  `windowLayout` and are unchanged.
+
+### Verification
+
+- Compiles; HoloMech EditMode tests 16/16. Scene hierarchy checked from the CLI: four Grabbables, each targeting its
+  own window / holder; ray, poke, hand-grab and ray-grab interactables in place; one `PointableCanvasModule`.
+- Play mode in the Editor (OpenXR over Link was active): no errors; the panels sit in their holders, the beam is a
+  child of the window, the bar has Reset Layout; moving the Beam panel and calling Reset Layout restores its pose.
+- Not checked: how it looks and feels on the headset (the Editor capture was black; the headset was not being worn).
+
+- PI tested on the headset: works. One fix: the window opened too low (centre 25 cm below the eyes); now 8 cm
+  below (`BoardOffset` in the builder, scene rebuilt).
+
+### Open
+
+- Depth occlusion (Meta Depth API) — planned for later, see README "Not done yet".
+
 ## 2026-10-21 — Quest 3: first APK on a second machine, Android build profile, Editor Play over Link
 
 ### Machine setup (per machine, not in the repository)

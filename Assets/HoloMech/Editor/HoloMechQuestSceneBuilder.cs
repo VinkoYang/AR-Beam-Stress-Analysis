@@ -13,9 +13,11 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Creates Assets/HoloMech/Scenes/HoloMechQuest.unity for Meta Quest 3, from Meta's Building Blocks:
-/// Camera Rig, Interactions Rig (hands and controllers, ray and poke) and Passthrough (mixed reality). The HoloMech
-/// panels sit on a world-space board whose canvas gets Meta's ray and poke canvas interaction, and the controls are
-/// Meta's UI Set prefabs (<see cref="MetaUiSkin"/>) on a Quest-dark variant of the UI theme.
+/// Camera Rig, Interactions Rig (hands and controllers, ray and poke) and Passthrough (mixed reality). The app sits in
+/// a grabbable window (<see cref="XRWindowLayout"/>): a main canvas, a bar with Reset Layout, a handle under the window,
+/// and one holder per panel with its own canvas and handle. Every canvas gets Meta's ray and poke canvas interaction,
+/// every handle Meta's grab and ray grab, and the controls are Meta's UI Set prefabs (<see cref="MetaUiSkin"/>) on a
+/// Quest-dark variant of the UI theme.
 ///
 /// Installing blocks is asynchronous, so the CLI starts the build and polls:
 ///   unity command eval -- --code "return HoloMechQuestSceneBuilder.Build();"
@@ -33,9 +35,12 @@ public static class HoloMechQuestSceneBuilder
     const string InteractionsRigBlock = "Packages/com.meta.xr.sdk.interaction.ovr/Editor/Blocks/Interactions/Interactions.asset";
     const string UiSet = "Packages/com.meta.xr.sdk.interaction/Runtime/Sample/Objects/UISet/Prefabs/";
 
-    /// <summary>Board: 1.8 m wide, 1.6 m in front of the user and a little below eye height.</summary>
+    /// <summary>
+    /// Window: 1.8 m wide, 1.6 m in front of the user, its centre 8 cm below eye height (at −25 cm the PI found it
+    /// too low on the headset, 2026-10-21).
+    /// </summary>
     const float BoardWidth = 1.8f;
-    static readonly Vector3 BoardOffset = new Vector3(0f, -0.25f, 1.6f);
+    static readonly Vector3 BoardOffset = new Vector3(0f, -0.08f, 1.6f);
 
     static string status = "idle";
 
@@ -102,20 +107,21 @@ public static class HoloMechQuestSceneBuilder
             lightGo.transform.rotation = Quaternion.Euler(40, -30, 0);
             lightGo.GetComponent<Light>().type = LightType.Directional;
 
-            var board = new GameObject("HoloMech Board").transform;
-            board.position = new Vector3(0, 1.6f, 0) + BoardOffset;
-            var canvasGo = new GameObject("HoloMech UI", typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster));
-            var rt = (RectTransform)canvasGo.transform;
-            rt.SetParent(board, false);
-            rt.sizeDelta = new Vector2(1920, 1080);
-            rt.localScale = Vector3.one * (BoardWidth / 1920f);
-            var canvas = canvasGo.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.WorldSpace;
-            canvas.worldCamera = eye;
+            // The window: main canvas (guided screens, banner, popups), window bar with Reset Layout, a grab handle
+            // under it, and one grabbable holder per panel (XRWindowLayout moves the panels into them at runtime).
+            status = "building: window";
+            var window = new GameObject("HoloMech Window").transform;
+            window.position = new Vector3(0, 1.6f, 0) + BoardOffset;
+            const float px = BoardWidth / 1920f;
+            var canvas = WorldCanvas("HoloMech UI", window, new Vector2(1920, 1080), px, Vector3.zero, eye);
+            var bar = WorldCanvas("Window Bar", window, new Vector2(1920, 84), px, new Vector3(0, (540 + 24 + 42) * px, 0), eye);
+            var windowGrab = Handle(window, window, new Vector2(0.32f, 0.022f), new Vector3(0, -(540 + 30) * px, -0.005f), eye);
 
-            status = "building: canvas interaction";
-            QuickActionsAPI.AddRayCanvasInteraction(canvasGo);
-            QuickActionsAPI.AddPokeCanvasInteraction(canvasGo);
+            // Panels a little in front of the main canvas, so rays reach them first. The result menu keeps the 0.74
+            // scale it has between the side panels on the board.
+            var beamPanel = PanelHolder("Beam Panel Holder", window, new Vector2(560, 1032), px, new Vector3(-656 * px, 0, -0.01f), eye);
+            var loadPanel = PanelHolder("Load Panel Holder", window, new Vector2(560, 1032), px, new Vector3(656 * px, 0, -0.01f), eye);
+            var results = PanelHolder("Result Menu Holder", window, new Vector2(920, 560), px * 0.74f, new Vector3(0, -269 * px, -0.01f), eye);
 
             var beamGo = new GameObject("HoloMech Beam");
             var view = beamGo.AddComponent<HoloMechBeamView>();
@@ -128,6 +134,8 @@ public static class HoloMechQuestSceneBuilder
             var xr = appGo.AddComponent<XRPresentation>();
             xr.StartOffset = BoardOffset;
             xr.BeamLength = 0.5f;
+            var windowLayout = window.gameObject.AddComponent<XRWindowLayout>();
+            windowLayout.SetUp(beamPanel, loadPanel, results, bar, windowGrab);
             var app = appGo.AddComponent<HoloMechApp>();
             var so = new SerializedObject(app);
             so.FindProperty("theme").objectReferenceValue = theme;
@@ -136,6 +144,7 @@ public static class HoloMechQuestSceneBuilder
             so.FindProperty("worldSpace").boolValue = true;
             so.FindProperty("boardCanvas").objectReferenceValue = canvas;
             so.FindProperty("uiSkin").objectReferenceValue = skin;
+            so.FindProperty("windowLayout").objectReferenceValue = windowLayout;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -147,6 +156,83 @@ public static class HoloMechQuestSceneBuilder
             status = "error: " + (e.InnerException ?? e).Message;
             Debug.LogException(e);
         }
+    }
+
+    /// <summary>World-space canvas with Meta's ray and poke canvas interaction (Interaction SDK Quick Actions).</summary>
+    static Canvas WorldCanvas(string name, Transform parent, Vector2 sizePx, float metresPerPx, Vector3 localPosition, Camera eye)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster));
+        var rt = (RectTransform)go.transform;
+        rt.SetParent(parent, false);
+        rt.sizeDelta = sizePx;
+        rt.localScale = Vector3.one * metresPerPx;
+        rt.localPosition = localPosition;
+        var canvas = go.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.worldCamera = eye;
+        QuickActionsAPI.AddRayCanvasInteraction(go);
+        QuickActionsAPI.AddPokeCanvasInteraction(go);
+        return canvas;
+    }
+
+    /// <summary>A panel's own canvas under a holder that a handle on its top edge moves.</summary>
+    static Transform PanelHolder(string name, Transform window, Vector2 sizePx, float metresPerPx, Vector3 localPosition, Camera eye)
+    {
+        var holder = new GameObject(name).transform;
+        holder.SetParent(window, false);
+        holder.localPosition = localPosition;
+        WorldCanvas("Canvas", holder, sizePx, metresPerPx, Vector3.zero, eye);
+        float top = sizePx.y / 2f * metresPerPx;
+        Handle(holder, holder, new Vector2(0.16f, 0.018f), new Vector3(0, top + 0.022f, -0.002f), eye);
+        return holder;
+    }
+
+    /// <summary>
+    /// Pill-shaped grab handle: a Grabbable (target = the window or a panel holder) with <see cref="FaceUserGrabTransformer"/>,
+    /// Meta's hand / controller grab and ray grab interactions on a box collider a little larger than the pill.
+    /// </summary>
+    static FaceUserGrabTransformer Handle(Transform parent, Transform target, Vector2 sizeM, Vector3 localPosition, Camera eye)
+    {
+        var go = new GameObject("Grab Handle");
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = localPosition;
+        var collider = go.AddComponent<BoxCollider>();
+        collider.size = new Vector3(sizeM.x + 0.04f, sizeM.y + 0.03f, 0.02f);
+        var body = go.AddComponent<Rigidbody>();
+        body.isKinematic = true;
+        body.useGravity = false;
+
+        var transformer = go.AddComponent<FaceUserGrabTransformer>();
+        var grabbable = go.AddComponent<Oculus.Interaction.Grabbable>();
+        grabbable.InjectOptionalTargetTransform(target);
+        grabbable.InjectOptionalOneGrabTransformer(transformer);
+        grabbable.InjectOptionalTwoGrabTransformer(transformer);
+
+        // Pill: 1 canvas pixel = 1 mm; display only (no raycaster), the collider takes the input.
+        var pillCanvas = new GameObject("Pill", typeof(RectTransform), typeof(Canvas));
+        var pr = (RectTransform)pillCanvas.transform;
+        pr.SetParent(go.transform, false);
+        pr.sizeDelta = sizeM * 1000f;
+        pr.localScale = Vector3.one * 0.001f;
+        var pc = pillCanvas.GetComponent<Canvas>();
+        pc.renderMode = RenderMode.WorldSpace;
+        pc.worldCamera = eye;
+        var image = new GameObject("Image", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+        image.rectTransform.SetParent(pr, false);
+        image.rectTransform.anchorMin = Vector2.zero;
+        image.rectTransform.anchorMax = Vector2.one;
+        image.rectTransform.offsetMin = image.rectTransform.offsetMax = Vector2.zero;
+        var theme = AssetDatabase.LoadAssetAtPath<UiTheme>(ThemePath);
+        image.sprite = theme != null ? theme.roundedRect : null;
+        image.type = Image.Type.Sliced;
+        image.pixelsPerUnitMultiplier = 2f;
+        image.raycastTarget = false;
+        image.color = new Color(1f, 1f, 1f, 0.45f);
+
+        QuickActionsAPI.AddGrabInteraction(go);
+        QuickActionsAPI.AddRayGrabInteraction(go);
+        go.AddComponent<GrabHandleVisual>().SetPill(image);
+        return transformer;
     }
 
     /// <summary>Runs a Building Block's installer (internal in the Meta SDK, so through reflection).</summary>
