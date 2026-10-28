@@ -102,6 +102,7 @@ public static class HoloMechQuestSceneBuilder
                     cam.backgroundColor = Color.clear;
                 }
             }
+            DisableLocomotion();
 
             var lightGo = new GameObject("Directional Light", typeof(Light), typeof(UniversalAdditionalLightData));
             lightGo.transform.rotation = Quaternion.Euler(40, -30, 0);
@@ -188,6 +189,23 @@ public static class HoloMechQuestSceneBuilder
     }
 
     /// <summary>
+    /// The Interactions Rig's FirstPersonLocomotor applies gravity to a CharacterController. A passthrough scene has no
+    /// floor collider, so on the headset the player fell through the world. Locomotion is not used here: disable it.
+    /// Public so the open scene can be patched from the CLI without a full rebuild.
+    public static int DisableLocomotion()
+    {
+        int count = 0;
+        foreach (var locomotor in UnityEngine.Object.FindObjectsByType<Oculus.Interaction.Locomotion.FirstPersonLocomotor>(
+                     FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            var so = new SerializedObject(locomotor);
+            so.FindProperty("_velocityDisabled").boolValue = true;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            count++;
+        }
+        return count;
+    }
+
     /// Pill-shaped grab handle: a Grabbable (target = the window or a panel holder) with <see cref="FaceUserGrabTransformer"/>,
     /// Meta's hand / controller grab and ray grab interactions on a box collider a little larger than the pill.
     /// </summary>

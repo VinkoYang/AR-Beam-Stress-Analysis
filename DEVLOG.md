@@ -2,6 +2,20 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-26 — Quest 3S: player fell through the world; locomotion disabled
+
+First APK built on this machine (Dell Precision; Link does not work here, so Build from the Editor and `adb install`)
+and installed on a Quest 3S. The app started, but the user kept falling.
+
+- Cause: the Interactions Rig's `Locomotor/PlayerController` is a `FirstPersonLocomotor` with a `CharacterController`
+  and gravity. The passthrough scene has no floor collider. Meta's guard (disable velocity when no ground within 10 m
+  on Start) did not trigger, most likely because a grab-handle collider was below the capsule on Start and then moved.
+- Fix: `HoloMechQuestSceneBuilder.DisableLocomotion()` sets `_velocityDisabled` on every `FirstPersonLocomotor`; the
+  builder calls it after installing the blocks, and the open `HoloMechQuest` scene was patched with it and saved
+  (no full rebuild). The app does not use locomotion (teleport / slide) in mixed reality.
+- Checked: compiles; the scene has the `_velocityDisabled` override; APK rebuilt (Succeeded, about 86 MB) and
+  installed with `adb`, app starts on the 3S.
+
 ## 2026-10-21 — Quest window: grabbable window, movable panels, Reset Layout
 
 PI's request after the first headset test: put the whole app into one window that can be dragged in 3D, with the
