@@ -135,7 +135,7 @@ namespace HoloMech
         void BuildInfo(RectTransform panel)
         {
             lengthSlider = UiKit.LabeledSlider(t, panel, "Length", "Beam Length (cm)", HoloMechRanges.LengthMinCm, HoloMechRanges.LengthMaxCm,
-                inputs.lengthCm, 1f, "{0:0}", out lengthLabel, v => inputs.lengthCm = v);
+                inputs.lengthCm, 1f, "{0:0}", out lengthLabel, v => inputs.SetLength(v));
             Fit(lengthSlider.transform.parent, -28, 84);
             modulusSlider = UiKit.LabeledSlider(t, panel, "Modulus", "Elastic Module (GPa)", HoloMechRanges.ModulusMinGPa, HoloMechRanges.ModulusMaxGPa,
                 inputs.elasticModulusGPa, 1f, "{0:0}", out modulusLabel, v =>

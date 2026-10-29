@@ -5,6 +5,16 @@ using UnityEngine;
 
 namespace HoloMech
 {
+    /// <summary>What the colours of the deflected beam show.</summary>
+    public enum BeamColorMode
+    {
+        /// <summary>|w(x)|, as in the HoloMech paper.</summary>
+        Deflection,
+
+        /// <summary>Largest bending stress in the section, |M(x)|·c/I (the on-site overlay uses this).</summary>
+        BendingStress,
+    }
+
     /// <summary>
     /// The holographic beam of HoloMech Scene 4: a grey undeformed beam, the coloured deflected beam (deflection
     /// times an adjustable scale, coloured by |w|), supports as grey blocks, and load arrows (yellow point load,
@@ -22,6 +32,9 @@ namespace HoloMech
         [SerializeField] bool lockColorScale;
         [SerializeField, Min(1e-6f)] float lockedDeflectionMetres = 0.01f;
 
+        [Tooltip("Log solve and redraw times (ms) after every rebuild, for the performance table (adb logcat -s Unity).")]
+        [SerializeField] bool logTimings = true;
+
         [Header("Materials")]
         [Tooltip("Needs vertex colours (the student's BeamStressMaterial / BeamStressShader does).")]
         [SerializeField] Material stressMaterial;
@@ -33,8 +46,9 @@ namespace HoloMech
         BeamMeshBuilder deformed, ghost;
         MeshFilter deformedFilter, ghostFilter;
         Transform supportsRoot, loadsRoot;
-        GameObject pointArrow;
+        readonly List<GameObject> pointArrows = new List<GameObject>();
         readonly List<GameObject> uniformArrows = new List<GameObject>();
+        BeamColorMode colorMode = BeamColorMode.Deflection;
 
         float deflectionScale = 1f;
         bool showDeformation = true, showLoading = true, stressMode;
@@ -93,6 +107,21 @@ namespace HoloMech
             set { lockColorScale = value; Refresh(); }
         }
 
+        /// <summary>Colour by deflection (the paper) or by bending stress.</summary>
+        public BeamColorMode ColorMode
+        {
+            get => colorMode;
+            set { colorMode = value; Refresh(); ColorModeChanged?.Invoke(); }
+        }
+
+        public event Action ColorModeChanged;
+
+        /// <summary>Largest bending stress |M|c/I along the beam, Pa.</summary>
+        public double MaxBendingStress => Solution != null ? Solution.MaxBendingStress : 0;
+
+        /// <summary>Local scale that makes one scene metre equal one real metre (the on-site overlay).</summary>
+        public float TrueScale => 1f / DisplayUnitsPerMetre;
+
         /// <summary>A scale that makes the largest deflection about 10 % of the beam length (the spec's default).</summary>
         public float DefaultDeflectionScale()
         {
@@ -139,8 +168,13 @@ namespace HoloMech
         }
 
         /// <summary>Re-solves the current inputs (after editing <see cref="Inputs"/> in place).</summary>
+        /// <summary>Time of the last solve and of the last full redraw (solve + meshes + supports + loads + colours), ms.</summary>
+        public double LastSolveMs { get; private set; }
+        public double LastRebuildMs { get; private set; }
+
         public bool Rebuild(bool resetScale)
         {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
             EnsureChildren();
             if (!inputs.TrySolve(out var solution, out var error))
             {
@@ -149,6 +183,7 @@ namespace HoloMech
             }
 
             Solution = solution;
+            LastSolveMs = clock.Elapsed.TotalMilliseconds;
             DisplayUnitsPerMetre = displayLength / (float)inputs.LengthM;
 
             string signature = Signature();
@@ -163,6 +198,10 @@ namespace HoloMech
             if (resetScale) deflectionScale = DefaultDeflectionScale();
             Refresh();
             ApplyVisibility();
+            LastRebuildMs = clock.Elapsed.TotalMilliseconds;
+            if (logTimings)
+                Debug.Log($"[HoloMechBeamView] solve {LastSolveMs:0.###} ms, rebuild {LastRebuildMs:0.###} ms, " +
+                          $"{inputs.supports.Count} supports, {inputs.pointLoads.Count} point / {inputs.uniformLoads.Count} uniform loads");
             Solved?.Invoke(this);
             return true;
         }
@@ -171,12 +210,21 @@ namespace HoloMech
         public void Refresh()
         {
             if (deformed == null || Solution == null) return;
-            double wMax = lockColorScale ? lockedDeflectionMetres : Math.Max(MaxDeflectionMetres, 1e-15);
             double length = inputs.LengthM;
             float units = DisplayUnitsPerMetre;
-            deformed.Apply(
-                f => (float)Solution.Deflection(f * length) * units * deflectionScale,
-                f => (float)(Math.Abs(Solution.Deflection(f * length)) / wMax));
+            Func<float, float> colour;
+            if (colorMode == BeamColorMode.BendingStress)
+            {
+                double sMax = Math.Max(MaxBendingStress, 1e-9);
+                colour = f => (float)(Solution.BendingStress(f * length) / sMax);
+            }
+            else
+            {
+                double wMax = lockColorScale ? lockedDeflectionMetres : Math.Max(MaxDeflectionMetres, 1e-15);
+                colour = f => (float)(Math.Abs(Solution.Deflection(f * length)) / wMax);
+            }
+
+            deformed.Apply(f => (float)Solution.Deflection(f * length) * units * deflectionScale, colour);
         }
 
         // ------------------------------------------------------------------ construction
@@ -238,14 +286,17 @@ namespace HoloMech
                 float x = (float)s.Position * u;
                 if (s.Kind == SupportKind.Fixed)
                 {
-                    bool left = s.Position < inputs.LengthM / 2;
+                    // A wall outside the beam at an end; a clamp block around the beam at an interior support.
+                    double tol = 1e-3 * inputs.LengthM;
+                    bool atLeft = s.Position <= tol, atRight = s.Position >= inputs.LengthM - tol;
                     var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     Destroy(wall.GetComponent<Collider>());
-                    wall.name = left ? "Fixed support (left)" : "Fixed support (right)";
+                    wall.name = atLeft ? "Fixed support (left)" : atRight ? "Fixed support (right)" : "Fixed support (interior)";
                     wall.transform.SetParent(supportsRoot, false);
                     float thick = 0.18f;
                     wall.transform.localScale = new Vector3(thick, block * 1.4f, Mathf.Max(block * 1.4f, width * 2.2f));
-                    wall.transform.localPosition = new Vector3(x + (left ? -thick / 2 : thick / 2), 0, 0);
+                    float offset = atLeft ? -thick / 2 : atRight ? thick / 2 : 0f;
+                    wall.transform.localPosition = new Vector3(x + offset, 0, 0);
                     wall.GetComponent<MeshRenderer>().sharedMaterial = supportMaterial;
                 }
                 else
@@ -264,7 +315,7 @@ namespace HoloMech
         void BuildLoads()
         {
             Clear(loadsRoot);
-            pointArrow = null;
+            pointArrows.Clear();
             uniformArrows.Clear();
             if (pointLoadMaterial == null) pointLoadMaterial = ProceduralShapes.Lit(new Color(1f, 0.78f, 0.1f), 0.2f);
             if (uniformLoadMaterial == null) uniformLoadMaterial = ProceduralShapes.Lit(new Color(0.2f, 0.55f, 0.95f), 0.2f);
@@ -273,19 +324,28 @@ namespace HoloMech
             float halfH = (float)SectionProfile.For(inputs, 16).Height / 2 * u;
             float arrowLength = Mathf.Max(displayLength * 0.16f, halfH * 3f);
 
-            if (inputs.pointLoad.enabled && inputs.pointLoad.forceN != 0)
+            // Arrow length grows with the load (largest load of each kind = full length), so loads can be compared.
+            float maxP = 0f, maxW = 0f;
+            foreach (var p in inputs.pointLoads) if (p.enabled) maxP = Mathf.Max(maxP, Mathf.Abs(p.forceN));
+            foreach (var w in inputs.uniformLoads) if (w.enabled) maxW = Mathf.Max(maxW, Mathf.Abs(w.intensityNPerM));
+
+            foreach (var p in inputs.pointLoads)
             {
-                bool down = inputs.pointLoad.direction == LoadDirection.Down;
-                pointArrow = NewArrow("Point load", pointLoadMaterial, inputs.pointLoad.positionCm / 100f * u, down, halfH, arrowLength, 1f);
+                if (!p.enabled || p.forceN == 0) continue;
+                bool down = p.direction == LoadDirection.Down;
+                float k = Mathf.Lerp(0.45f, 1f, Mathf.Abs(p.forceN) / maxP);
+                pointArrows.Add(NewArrow("Point load", pointLoadMaterial, p.positionCm / 100f * u, down, halfH, arrowLength * k, 1f));
             }
 
-            if (inputs.uniformLoad.enabled && inputs.uniformLoad.intensityNPerM != 0 && inputs.uniformLoad.endCm > inputs.uniformLoad.startCm)
+            foreach (var w in inputs.uniformLoads)
             {
-                bool down = inputs.uniformLoad.direction == LoadDirection.Down;
-                float x0 = inputs.uniformLoad.startCm / 100f * u, x1 = inputs.uniformLoad.endCm / 100f * u;
+                if (!w.enabled || w.intensityNPerM == 0 || w.endCm <= w.startCm) continue;
+                bool down = w.direction == LoadDirection.Down;
+                float k = Mathf.Lerp(0.45f, 1f, Mathf.Abs(w.intensityNPerM) / maxW);
+                float x0 = w.startCm / 100f * u, x1 = w.endCm / 100f * u;
                 int count = Mathf.Clamp(Mathf.RoundToInt((x1 - x0) / (arrowLength * 0.28f)) + 1, 2, 24);
                 for (int i = 0; i < count; i++)
-                    uniformArrows.Add(NewArrow("Uniform load", uniformLoadMaterial, Mathf.Lerp(x0, x1, i / (count - 1f)), down, halfH, arrowLength * 0.8f, 0.8f));
+                    uniformArrows.Add(NewArrow("Uniform load", uniformLoadMaterial, Mathf.Lerp(x0, x1, i / (count - 1f)), down, halfH, arrowLength * 0.8f * k, 0.8f));
             }
         }
 

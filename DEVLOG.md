@@ -2,6 +2,47 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-10-28 — Several loads and supports; on-site overlay at true scale (MSEC 2027)
+
+PI's request for an MSEC 2027 brief paper: (1) several point loads and several uniform loads, added and deleted from
+the panel, delete asks first; (2) supports movable along the beam; (3) several pinned / fixed supports; (4) keep the
+colour map; (5) in mixed reality, lay the beam onto a real member (the aluminium gantry crane in the Lucas ME lab),
+move it freely, set length and section, and read the colour map in place.
+
+- **Input model** (`HoloMechInputs`): `pointLoads`, `uniformLoads` and `supports` are lists. `SupportInput` = kind
+  (pin / clamp) + position, or `atRightEnd` so a right-end support follows the length (`SetLength`). `pointLoad`,
+  `uniformLoad`, `leftEnd`, `rightEnd` remain as properties for the guided flow and old tests. `Supports` resolves to
+  `BeamSupports.Custom`. New checks: no supports, two supports at one place, single pin. Old serialized single-load
+  fields in scenes are dropped (defaults used).
+- **Solver:** unchanged. It already took any list of pins and clamps (square system ΣF, ΣM, v = 0 at supports,
+  θ = 0 at clamps). No new package needed.
+- **Workbench:** Supports card (presets Cantilever / Simple / Fixed-Fixed / 2 Spans, list, + Add support), Point Loads
+  and Uniform Loads cards as lists. Each entry is a one-line summary (+ / − opens it); × turns the line into
+  "Delete P2? [Delete] [Cancel]". Limits 6 supports, 8 point, 4 uniform loads. Side panels now scroll (ScrollRect).
+  `AddCard` lets other components add a card.
+- **Beam view:** one arrow per load, arrow length scaled to the largest load of its kind; interior clamps drawn as a
+  block around the beam; `ColorMode` = Deflection (paper) or BendingStress (|M|c/I); `TrueScale`; solve / rebuild
+  times logged (`logTimings`, for the performance table). Deformation menu: "Colour by" choice, max σ shown.
+- **On-site mode** (`SitePlacement`, Quest window only; card "On-site Overlay (MR)" in the beam panel): the beam leaves
+  the window, true scale (1 scene m = 1 m), deflection scale 1, coloured by bending stress, label "SIMULATED LOADS"
+  with σmax and its position. Grab handle above midspan (`LevelGrabTransformer`: follows the hand, turns about the
+  vertical only). "Align by 2 points": touch the real beam's left end with a controller and press A (right) / X
+  (left), then the right end; left end → origin (minus half the depth if the top was touched), level axis through
+  both points, span → length (optional). Nudges 5 mm / 1 cm / 5 cm along, up/down, sideways; turn 0.5°. Each
+  alignment is appended to `alignment_log.csv` in `Application.persistentDataPath`. Reset Layout leaves on-site mode
+  first. Window title is now "Beam Stress Analysis — Mixed Reality".
+- **Scene:** `HoloMechQuestSceneBuilder.AddBeamHandle` (fresh builds) and `PatchBeamHandle()` (patches the saved scene;
+  run in batch mode with `-executeMethod HoloMechQuestSceneBuilder.PatchBeamHandleBatch`). Done on the saved scene.
+- **Fixed on the way:** `UiKit.Slider` added a second RectTransform (error log, desktop only); glyphs ✕ ▸ ▾ are not in
+  Inter, replaced by × + −.
+- **Checked:** `dotnet test Tools/SolverTests` and Unity EditMode (batch mode): 129 / 129, including 8 new tests
+  (superposition, two-span continuous beam 3wL/8 – 10wL/8 – M = −wL²/8, interior clamp + overhangs, right-end support
+  follows the length, unsolvable layouts, deep clone). `QuestBuild.Build` (new, batch mode): APK Succeeded,
+  `Builds/HoloMechQuest.apk` ≈ 90 MB. **Not yet run on the headset.**
+- **Open:** PlayMode test `WorkbenchListsPlayTest` (screenshots via `HOLOMECH_SHOTS`) hangs in batch mode while OpenXR
+  looks for a headset; run it from the Test Runner window. Headset pass of the new panels, on-site mode and two-point
+  alignment. Spatial anchors (alignment is lost on restart). Aluminium preset (use Custom, 69 GPa).
+
 ## 2026-10-26 — Quest 3S: player fell through the world; locomotion disabled
 
 First APK built on this machine (Dell Precision; Link does not work here, so Build from the Editor and `adb install`)

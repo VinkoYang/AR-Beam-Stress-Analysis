@@ -130,6 +130,7 @@ public static class HoloMechQuestSceneBuilder
             var vso = new SerializedObject(view);
             vso.FindProperty("buildOnStart").boolValue = false;
             vso.ApplyModifiedPropertiesWithoutUndo();
+            AddBeamHandle(beamGo.transform, eye);
 
             var appGo = new GameObject("HoloMech App");
             var xr = appGo.AddComponent<XRPresentation>();
@@ -206,10 +207,50 @@ public static class HoloMechQuestSceneBuilder
         return count;
     }
 
+    /// <summary>
+    /// Grab handle for the on-site beam (<see cref="SitePlacement"/>): a pill above the beam whose Grabbable moves the beam
+    /// with <see cref="LevelGrabTransformer"/> (follows the hand, turns about the vertical only). Hidden until on-site
+    /// mode is turned on; SitePlacement keeps it above midspan at a constant size.
+    /// </summary>
+    static void AddBeamHandle(Transform beam, Camera eye)
+    {
+        var handle = Handle<LevelGrabTransformer>(beam, beam, new Vector2(0.22f, 0.03f), Vector3.zero, eye);
+        handle.gameObject.name = "Beam Grab Handle";
+        handle.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Adds the beam grab handle to the open HoloMechQuest scene and saves it, without a full rebuild (the Building
+    /// Blocks install is slow). Safe to run twice.
+    ///   unity command eval -- --code "return HoloMechQuestSceneBuilder.PatchBeamHandle();"
+    /// </summary>
+    public static string PatchBeamHandle()
+    {
+        var scene = EditorSceneManager.GetActiveScene();
+        if (scene.path != ScenePath) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+        var view = UnityEngine.Object.FindAnyObjectByType<HoloMechBeamView>(FindObjectsInactive.Include);
+        if (view == null) return "error: no HoloMechBeamView in " + ScenePath;
+        if (view.GetComponentInChildren<LevelGrabTransformer>(true) != null) return "already patched";
+        var rig = UnityEngine.Object.FindAnyObjectByType<OVRCameraRig>();
+        var eye = rig != null ? rig.centerEyeAnchor.GetComponent<Camera>() : Camera.main;
+        AddBeamHandle(view.transform, eye);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        return "patched " + ScenePath;
+    }
+
+    /// <summary>Batch-mode entry: Unity -batchmode -executeMethod HoloMechQuestSceneBuilder.PatchBeamHandleBatch -quit</summary>
+    public static void PatchBeamHandleBatch() => Debug.Log("PatchBeamHandle: " + PatchBeamHandle());
+
+    /// <summary>
     /// Pill-shaped grab handle: a Grabbable (target = the window or a panel holder) with <see cref="FaceUserGrabTransformer"/>,
     /// Meta's hand / controller grab and ray grab interactions on a box collider a little larger than the pill.
     /// </summary>
     static FaceUserGrabTransformer Handle(Transform parent, Transform target, Vector2 sizeM, Vector3 localPosition, Camera eye)
+        => Handle<FaceUserGrabTransformer>(parent, target, sizeM, localPosition, eye);
+
+    static T Handle<T>(Transform parent, Transform target, Vector2 sizeM, Vector3 localPosition, Camera eye)
+        where T : Component, Oculus.Interaction.ITransformer
     {
         var go = new GameObject("Grab Handle");
         go.transform.SetParent(parent, false);
@@ -220,7 +261,7 @@ public static class HoloMechQuestSceneBuilder
         body.isKinematic = true;
         body.useGravity = false;
 
-        var transformer = go.AddComponent<FaceUserGrabTransformer>();
+        var transformer = go.AddComponent<T>();
         var grabbable = go.AddComponent<Oculus.Interaction.Grabbable>();
         grabbable.InjectOptionalTargetTransform(target);
         grabbable.InjectOptionalOneGrabTransformer(transformer);

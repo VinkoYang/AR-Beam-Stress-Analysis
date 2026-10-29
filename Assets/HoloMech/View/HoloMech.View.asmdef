@@ -10,7 +10,8 @@
         "Unity.InputSystem",
         "Unity.XR.Interaction.Toolkit",
         "Unity.XR.CoreUtils",
-        "Oculus.Interaction"
+        "Oculus.Interaction",
+        "Oculus.VR"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

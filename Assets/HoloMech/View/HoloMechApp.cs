@@ -67,6 +67,7 @@ namespace HoloMech
         ErrorPopup error;
         Button layoutButton;
         XRPresentation xr;
+        SitePlacement site;
         bool dirty, switching;
 
         public AppState State { get; private set; }
@@ -112,8 +113,12 @@ namespace HoloMech
                 xr.Setup(canvas, beamView);
                 xr.PinnedChanged += UpdatePinLabels;
                 if (windowLayout != null)
+                {
                     windowLayout.Attach(theme, workbench, (RectTransform)deformation.transform, (RectTransform)stress.transform,
                                         canvas, xr, beamView.transform);
+                    site = gameObject.AddComponent<SitePlacement>();
+                    site.Setup(theme, beamView, inputs, workbench, () => dirty = true, windowLayout);
+                }
             }
 
             deformation.pinButton.onClick.AddListener(TogglePin);

@@ -163,7 +163,6 @@ namespace HoloMech
         {
             if (Skin != null && Skin.slider != null) return MetaSlider(parent, name, min, max, value);
             var root = Rect(name, parent);
-            root.gameObject.AddComponent<RectTransform>();
 
             var bg = Rect("Background", root);
             bg.anchorMin = new Vector2(0, 0.5f);

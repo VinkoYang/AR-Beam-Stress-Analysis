@@ -1,3 +1,4 @@
+using System;
 using ARBeam;
 using TMPro;
 using UnityEngine;
@@ -15,6 +16,7 @@ namespace HoloMech
         public Slider scaleSlider;
         public TMP_Text scaleValue, maxDeflection;
         public Button pinButton, backButton;
+        Action<int> setColorMode;
 
         HoloMechBeamView view;
         bool syncing;
@@ -52,13 +54,37 @@ namespace HoloMech
             sr.offsetMin = new Vector2(28, -112);
             sr.offsetMax = new Vector2(-28, -80);
 
+            // Colour by deflection (the paper) or by bending stress (the on-site overlay), between the slider and the switches.
+            var colorRow = UiKit.Rect("Colour by", body.transform);
+            colorRow.anchorMin = new Vector2(0, 1);
+            colorRow.anchorMax = new Vector2(1, 1);
+            colorRow.pivot = new Vector2(0.5f, 1);
+            colorRow.offsetMin = new Vector2(28, -196);
+            colorRow.offsetMax = new Vector2(-28, -134);
+            var colorCaption = UiKit.Label(t, colorRow, "Caption", "Colour by", t.medium, t.labelSize - 2, t.textPrimary, TextAlignmentOptions.MidlineLeft);
+            colorCaption.rectTransform.anchorMin = new Vector2(0, 0);
+            colorCaption.rectTransform.anchorMax = new Vector2(0, 1);
+            colorCaption.rectTransform.pivot = new Vector2(0, 0.5f);
+            colorCaption.rectTransform.sizeDelta = new Vector2(180, 0);
+            colorCaption.rectTransform.anchoredPosition = Vector2.zero;
+            panel.setColorMode = UiKit.Segmented(t, colorRow, "Options", new[] { "Deflection", "Bending stress" }, (int)view.ColorMode,
+                i => { if (panel.view != null) panel.view.ColorMode = (BeamColorMode)i; });
+            var seg = (RectTransform)colorRow.Find("Options");
+            seg.anchorMin = Vector2.zero;
+            seg.anchorMax = Vector2.one;
+            seg.offsetMin = new Vector2(190, 0);
+            seg.offsetMax = Vector2.zero;
+
             panel.deformationSwitch = UiKit.Switch(t, body.transform, "Deformation", "Deformation", true);
             Fit(panel.deformationSwitch.GetComponent<RectTransform>(), new Vector2(0, 0), new Vector2(0.5f, 0), 24, 110, 8, 80);
             panel.loadingSwitch = UiKit.Switch(t, body.transform, "Loading", "Loading", true);
             Fit(panel.loadingSwitch.GetComponent<RectTransform>(), new Vector2(0.5f, 0), new Vector2(1, 0), 8, 110, 24, 80);
 
             panel.maxDeflection = UiKit.Label(t, body.transform, "Max deflection", "", t.semiBold, t.valueSize + 2, t.textPrimary, TextAlignmentOptions.MidlineLeft);
-            panel.maxDeflection.rectTransform.Place(new Vector2(0, 0), new Vector2(0, 0), new Vector2(28, 24), new Vector2(700, 56));
+            panel.maxDeflection.rectTransform.Place(new Vector2(0, 0), new Vector2(0, 0), new Vector2(28, 24), new Vector2(724, 56));
+            panel.maxDeflection.enableAutoSizing = true;
+            panel.maxDeflection.fontSizeMin = t.captionSize;
+            panel.maxDeflection.fontSizeMax = t.valueSize + 2;
 
             // Pin and back buttons on the right.
             panel.pinButton = UiKit.Button(t, rt, "Pin", "Pin", t.captionSize + 4);
@@ -100,6 +126,7 @@ namespace HoloMech
             deformationSwitch.onValueChanged.AddListener(v => { if (view != null) view.ShowDeformation = v; });
             loadingSwitch.onValueChanged.AddListener(v => { if (view != null) view.ShowLoading = v; });
             view.Solved += _ => SyncFromView();
+            view.ColorModeChanged += SyncFromView;
             if (view.Solution != null) SyncFromView();
         }
 
@@ -109,6 +136,7 @@ namespace HoloMech
             scaleSlider.SetValueWithoutNotify(UiKit.ValueToLog(view.DeflectionScale, HoloMechRanges.ScaleMin, HoloMechRanges.ScaleMax));
             deformationSwitch.SetIsOnWithoutNotify(view.ShowDeformation);
             loadingSwitch.SetIsOnWithoutNotify(view.ShowLoading);
+            setColorMode((int)view.ColorMode);
             syncing = false;
             UpdateTexts();
         }
@@ -117,8 +145,9 @@ namespace HoloMech
         {
             scaleValue.text = view.DeflectionScale.ToString("0");
             // Real maximum deflection (not multiplied by the scale), in cm, as in the paper.
-            maxDeflection.text = $"<color=#{ColorUtility.ToHtmlStringRGB(new Color(0.72f, 0.77f, 0.88f))}>Max. Deflection:</color>  " +
-                                 $"{view.MaxDeflectionMetres * 100:0.#####} cm";
+            string key = ColorUtility.ToHtmlStringRGB(new Color(0.72f, 0.77f, 0.88f));
+            maxDeflection.text = $"<color=#{key}>Max. Deflection:</color>  {view.MaxDeflectionMetres * 100:0.#####} cm" +
+                                 $"     <color=#{key}>Max. σ:</color>  {view.MaxBendingStress / 1e6:0.##} MPa";
         }
     }
 }

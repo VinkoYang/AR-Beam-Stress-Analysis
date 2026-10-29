@@ -29,6 +29,12 @@ namespace HoloMech
 
         public bool Attached { get; private set; }
 
+        /// <summary>Raised before Reset Layout moves anything (the on-site beam goes back into the window first).</summary>
+        public event System.Action Resetting;
+
+        /// <summary>Title on the window bar.</summary>
+        public const string Title = "Beam Stress Analysis — Mixed Reality";
+
         public void SetUp(Transform beamPanel, Transform loadPanel, Transform results, Canvas bar, FaceUserGrabTransformer grab)
         {
             beamPanelHolder = beamPanel;
@@ -75,6 +81,7 @@ namespace HoloMech
         /// </summary>
         public void ResetLayout()
         {
+            Resetting?.Invoke();
             foreach (var (t, position, rotation) in defaults)
             {
                 t.localPosition = position;
@@ -110,7 +117,7 @@ namespace HoloMech
             if (barCanvas == null) return;
             var bar = UiKit.Panel(t, barCanvas.transform, "Window Bar", t.panel);
             bar.rectTransform.Stretch();
-            var title = UiKit.Label(t, bar.transform, "Title", "HoloMech — Beam Stress Analysis", t.semiBold, t.labelSize, t.textPrimary, TextAlignmentOptions.MidlineLeft);
+            var title = UiKit.Label(t, bar.transform, "Title", Title, t.semiBold, t.labelSize, t.textPrimary, TextAlignmentOptions.MidlineLeft);
             title.rectTransform.Stretch(new Vector2(28, 0), new Vector2(-320, 0));
             var reset = UiKit.Button(t, bar.transform, "Reset Layout", "Reset Layout", t.captionSize + 4);
             reset.GetComponent<RectTransform>().Place(new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-16, 0), new Vector2(260, 60));

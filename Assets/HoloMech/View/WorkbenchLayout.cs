@@ -11,8 +11,13 @@ namespace HoloMech
     /// <summary>
     /// All inputs on screen at once, with the beam re-solved as soon as anything changes (PI's request, 2026-10-20;
     /// the paper's step-by-step flow stays available as the Guided layout). Left panel: section and its dimensions,
-    /// boundary conditions, length and material. Right panel: point and uniform loads. Each card can be collapsed.
+    /// supports, length and material. Right panel: point loads and uniform loads. Each card can be collapsed.
     /// A banner at the top explains why the beam cannot be solved (e.g. unstable supports) instead of a blocking popup.
+    ///
+    /// Supports, point loads and uniform loads are lists (PI's request, 2026-10-28): "+ Add" appends one, each entry
+    /// is a one-line summary that expands to its controls, and its × asks for confirmation before deleting. Supports
+    /// can sit anywhere along the beam, so continuous and propped beams can be built. The panels scroll when the lists
+    /// grow taller than the panel.
     /// </summary>
     public class WorkbenchLayout : MonoBehaviour
     {
@@ -20,16 +25,21 @@ namespace HoloMech
         HoloMechInputs inputs;
         Action changed;
 
-        RectTransform dimsHost;
-        Action<int> setSection, setLeft, setRight, setMaterial, setPointDir, setUniformDir;
-        Slider length, modulus, pointPos, pointForce, uniStart, uniEnd, uniForce;
-        TMP_Text lengthL, modulusL, pointPosL, pointForceL, uniStartL, uniEndL, uniForceL;
-        Toggle pointOn, uniformOn;
+        RectTransform dimsHost, supportsHost, pointsHost, uniformsHost;
+        Button addSupport, addPoint, addUniform;
+        Action<int> setSection, setMaterial;
+        Slider length, modulus;
+        TMP_Text lengthL, modulusL;
         readonly List<(Slider s, TMP_Text l, Func<float> get)> dims = new List<(Slider, TMP_Text, Func<float>)>();
+
+        /// <summary>Refreshes the open list entry's sliders and every entry's summary line (after the length changed).</summary>
+        readonly List<Action> itemSyncs = new List<Action>();
+
+        int openSupport = -1, openPoint = 0, openUniform = -1;
         GameObject banner;
         TMP_Text bannerText;
         bool syncing;
-        RectTransform leftPanel, rightPanel;
+        RectTransform leftPanel, rightPanel, leftContent, rightContent;
 
         /// <summary>Raised when a side panel is collapsed or expanded (the camera re-frames).</summary>
         public event Action LayoutChanged;
@@ -55,7 +65,6 @@ namespace HoloMech
         public float FreeLeft => LeftCollapsed ? 0.04f : CentreLeft;
         public float FreeRight => RightCollapsed ? 0.96f : CentreRight;
 
-        static readonly EndCondition[] Ends = { EndCondition.Free, EndCondition.Pinned, EndCondition.Fixed };
         static readonly MaterialPreset[] Presets = { MaterialPreset.Steel, MaterialPreset.Concrete, MaterialPreset.Wood, MaterialPreset.Custom };
 
         /// <summary>Left edge of the free centre area and right edge, as fractions of the 1920-wide reference.</summary>
@@ -70,20 +79,18 @@ namespace HoloMech
             w.inputs = inputs;
             w.changed = changed;
 
-            var left = w.SidePanel(root, "Beam Panel", true);
-            w.leftPanel = left;
-            w.BuildSection(w.Card(left, "Section"));
-            w.BuildBoundary(w.Card(left, "Boundary Conditions"));
-            w.BuildBeam(w.Card(left, "Length and Material"));
+            w.leftPanel = w.SidePanel(root, "Beam Panel", true, out w.leftContent);
+            w.BuildSection(w.Card(w.leftContent, "Section"));
+            w.BuildSupports(w.Card(w.leftContent, "Supports"));
+            w.BuildBeam(w.Card(w.leftContent, "Length and Material"));
 
-            var right = w.SidePanel(root, "Load Panel", false);
-            w.rightPanel = right;
+            w.rightPanel = w.SidePanel(root, "Load Panel", false, out w.rightContent);
             w.CollapseButton(root, true);
             w.CollapseButton(root, false);
-            var hint = UiKit.Label(t, right, "Hint", "Upward load is positive", t.regular, t.captionSize, t.textSecondary, TextAlignmentOptions.Left);
+            var hint = UiKit.Label(t, w.rightContent, "Hint", "Upward load is positive", t.regular, t.captionSize, t.textSecondary, TextAlignmentOptions.Left);
             Height(hint.gameObject, 26);
-            w.BuildPoint(w.Card(right, "Point Load"));
-            w.BuildUniform(w.Card(right, "Uniform Load"));
+            w.BuildPoints(w.Card(w.rightContent, "Point Loads"));
+            w.BuildUniforms(w.Card(w.rightContent, "Uniform Loads"));
 
             var b = UiKit.Panel(t, root, "Error Banner", new Color(0.45f, 0.08f, 0.1f, 0.92f));
             b.rectTransform.Place(new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -24), new Vector2(700, 110));
@@ -104,9 +111,16 @@ namespace HoloMech
             if (banner.activeSelf) bannerText.text = string.Join("\n", problems);
         }
 
+        /// <summary>
+        /// Adds a collapsible card at the bottom of a side panel and returns its content column, so other components
+        /// (the MR on-site placement) can put their controls next to the inputs.
+        /// </summary>
+        public RectTransform AddCard(bool left, string title) => Card(left ? leftContent : rightContent, title);
+
         // ------------------------------------------------------------------ layout scaffolding
 
-        RectTransform SidePanel(Transform root, string name, bool left)
+        /// <summary>Side panel with a vertical scroll view; returns the panel, <paramref name="content"/> takes the cards.</summary>
+        RectTransform SidePanel(Transform root, string name, bool left, out RectTransform content)
         {
             var p = UiKit.Panel(t, root, name, t.panel);
             var r = p.rectTransform;
@@ -115,13 +129,36 @@ namespace HoloMech
             r.pivot = new Vector2(left ? 0 : 1, 0.5f);
             r.offsetMin = new Vector2(left ? 24 : -584, 24);
             r.offsetMax = new Vector2(left ? 584 : -24, -24);
-            var v = p.gameObject.AddComponent<VerticalLayoutGroup>();
-            v.padding = new RectOffset(20, 20, 18, 18);
+
+            var viewport = UiKit.Rect("Viewport", r);
+            viewport.Stretch(new Vector2(0, 8), new Vector2(0, -8));
+            viewport.gameObject.AddComponent<RectMask2D>();
+            // A transparent graphic so a drag on empty space between cards scrolls the panel.
+            var hit = viewport.gameObject.AddComponent<Image>();
+            hit.color = Color.clear;
+
+            content = UiKit.Rect("Content", viewport);
+            content.anchorMin = new Vector2(0, 1);
+            content.anchorMax = new Vector2(1, 1);
+            content.pivot = new Vector2(0.5f, 1);
+            content.offsetMin = content.offsetMax = Vector2.zero;
+            var v = content.gameObject.AddComponent<VerticalLayoutGroup>();
+            v.padding = new RectOffset(20, 20, 10, 18);
             v.spacing = 10;
             v.childControlHeight = true;
             v.childControlWidth = true;
             v.childForceExpandHeight = false;
             v.childForceExpandWidth = true;
+            var fit = content.gameObject.AddComponent<ContentSizeFitter>();
+            fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var scroll = p.gameObject.AddComponent<ScrollRect>();
+            scroll.viewport = viewport;
+            scroll.content = content;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 40;
             return r;
         }
 
@@ -189,13 +226,7 @@ namespace HoloMech
             c.normalColor = Color.Lerp(t.panel, t.panelRaised, 0.35f);
             header.colors = c;
 
-            var content = UiKit.Rect("Content", card);
-            var cv = content.gameObject.AddComponent<VerticalLayoutGroup>();
-            cv.spacing = 6;
-            cv.childControlHeight = true;
-            cv.childControlWidth = true;
-            cv.childForceExpandHeight = false;
-            cv.childForceExpandWidth = true;
+            var content = Column(card, "Content", 6);
 
             void Title(bool open) => label.text = title + (open ? "   <color=#8FA3CC>−</color>" : "   <color=#8FA3CC>+</color>");
             Title(true);
@@ -205,6 +236,18 @@ namespace HoloMech
                 Title(content.gameObject.activeSelf);
             });
             return content;
+        }
+
+        static RectTransform Column(Transform parent, string name, float spacing)
+        {
+            var col = UiKit.Rect(name, parent);
+            var cv = col.gameObject.AddComponent<VerticalLayoutGroup>();
+            cv.spacing = spacing;
+            cv.childControlHeight = true;
+            cv.childControlWidth = true;
+            cv.childForceExpandHeight = false;
+            cv.childForceExpandWidth = true;
+            return col;
         }
 
         static void Height(GameObject go, float h)
@@ -255,6 +298,117 @@ namespace HoloMech
             return setter;
         }
 
+        /// <summary>A full-width button row.</summary>
+        Button RowButton(RectTransform parent, string name, string text, Action onClick)
+        {
+            var b = UiKit.Button(t, parent, name, text, t.captionSize + 2);
+            Height(b.gameObject, 48);
+            b.onClick.AddListener(() => onClick());
+            return b;
+        }
+
+        /// <summary>Buttons side by side in one row (presets).</summary>
+        void ButtonRow(RectTransform parent, string name, string[] captions, Action<int> onClick)
+        {
+            var row = UiKit.Rect(name, parent);
+            Height(row.gameObject, 48);
+            for (int i = 0; i < captions.Length; i++)
+            {
+                int k = i;
+                var b = UiKit.Button(t, row, captions[i], captions[i], t.captionSize);
+                var rt = b.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2((float)i / captions.Length, 0);
+                rt.anchorMax = new Vector2((float)(i + 1) / captions.Length, 1);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.offsetMin = new Vector2(i == 0 ? 0 : 3, 0);
+                rt.offsetMax = new Vector2(i == captions.Length - 1 ? 0 : -3, 0);
+                b.onClick.AddListener(() => onClick(k));
+            }
+        }
+
+        // ------------------------------------------------------------------ list entries
+
+        /// <summary>
+        /// One list entry: a summary line that opens or closes the entry, a × that turns the line into
+        /// "Delete …? [Delete] [Cancel]", and (when open) the entry's controls built by <paramref name="body"/>.
+        /// </summary>
+        void Entry(RectTransform host, string id, Func<string> summary, bool open, Action toggle, Action<RectTransform> body, Action delete)
+        {
+            var item = Column(host, id, 4);
+
+            var row = UiKit.Rect("Row", item);
+            Height(row.gameObject, 48);
+            var head = UiKit.Button(t, row, "Summary", "", t.captionSize + 2);
+            var hr = head.GetComponent<RectTransform>();
+            hr.anchorMin = Vector2.zero;
+            hr.anchorMax = Vector2.one;
+            hr.offsetMin = Vector2.zero;
+            hr.offsetMax = new Vector2(-56, 0);
+            var headLabel = head.GetComponentInChildren<TMP_Text>();
+            headLabel.alignment = TextAlignmentOptions.MidlineLeft;
+            headLabel.rectTransform.Stretch(new Vector2(14, 0), new Vector2(-8, 0));
+            void Refresh() => headLabel.text = (open ? "−  " : "+  ") + summary();
+            Refresh();
+            head.onClick.AddListener(() => toggle());
+
+            var del = UiKit.Button(t, row, "Delete", "×", t.captionSize + 6);
+            del.GetComponent<RectTransform>().Place(new Vector2(1, 0.5f), new Vector2(1, 0.5f), Vector2.zero, new Vector2(48, 48));
+
+            // Confirmation, in place of the summary line.
+            var confirm = UiKit.Panel(t, row, "Confirm", new Color(0.45f, 0.08f, 0.1f, 0.95f));
+            confirm.rectTransform.Stretch();
+            var question = UiKit.Label(t, confirm.transform, "Question", $"Delete {id}?", t.medium, t.captionSize + 2, Color.white, TextAlignmentOptions.MidlineLeft);
+            question.rectTransform.Stretch(new Vector2(14, 0), new Vector2(-260, 0));
+            var yes = UiKit.Button(t, confirm.transform, "Confirm Delete", "Delete", t.captionSize + 2);
+            yes.GetComponent<RectTransform>().Place(new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-130, 0), new Vector2(122, 44));
+            var no = UiKit.Button(t, confirm.transform, "Cancel Delete", "Cancel", t.captionSize + 2);
+            no.GetComponent<RectTransform>().Place(new Vector2(1, 0.5f), new Vector2(1, 0.5f), Vector2.zero, new Vector2(122, 44));
+            confirm.gameObject.SetActive(false);
+            del.onClick.AddListener(() => confirm.gameObject.SetActive(true));
+            no.onClick.AddListener(() => confirm.gameObject.SetActive(false));
+            yes.onClick.AddListener(() => delete());
+
+            itemSyncs.Add(Refresh);
+            if (open)
+            {
+                var b = Column(item, "Body", 4);
+                var pad = b.GetComponent<VerticalLayoutGroup>();
+                pad.padding = new RectOffset(18, 0, 0, 6);
+                body(b);
+            }
+        }
+
+        static void Clear(RectTransform host)
+        {
+            for (int i = host.childCount - 1; i >= 0; i--)
+            {
+                var child = host.GetChild(i);
+                child.SetParent(null);
+                Destroy(child.gameObject);
+            }
+        }
+
+        static string Arrow(LoadDirection d) => d == LoadDirection.Up ? "↑" : "↓";
+
+        /// <summary>Rebuilds all three lists (after add, delete, open/close, presets or a sync from the guided flow).</summary>
+        void RebuildLists()
+        {
+            bool was = syncing;
+            syncing = true;
+            itemSyncs.Clear();
+            BuildSupportList();
+            BuildPointList();
+            BuildUniformList();
+            syncing = was;
+            LayoutRebuilder.MarkLayoutForRebuild((RectTransform)transform);
+        }
+
+        void ListChanged()
+        {
+            RebuildLists();
+            changed?.Invoke();
+        }
+
         // ------------------------------------------------------------------ cards
 
         void BuildSection(RectTransform c)
@@ -275,13 +429,7 @@ namespace HoloMech
 
         void BuildDimensions()
         {
-            for (int i = dimsHost.childCount - 1; i >= 0; i--)
-            {
-                var child = dimsHost.GetChild(i);
-                child.SetParent(null);
-                Destroy(child.gameObject);
-            }
-
+            Clear(dimsHost);
             dims.Clear();
             switch (inputs.section)
             {
@@ -325,20 +473,256 @@ namespace HoloMech
             syncing = was;
         }
 
-        void BuildBoundary(RectTransform c)
+        // ---- supports
+
+        void BuildSupports(RectTransform c)
         {
-            var names = new[] { "Free", "Pinned", "Fixed" };
-            setLeft = Choice(c, "Left end", names, Array.IndexOf(Ends, inputs.leftEnd), i => inputs.leftEnd = Ends[i]);
-            setRight = Choice(c, "Right end", names, Array.IndexOf(Ends, inputs.rightEnd), i => inputs.rightEnd = Ends[i]);
+            ButtonRow(c, "Presets", new[] { "Cantilever", "Simple", "Fixed-Fixed", "2 Spans" }, ApplySupportPreset);
+            supportsHost = Column(c, "Support List", 4);
+            addSupport = RowButton(c, "Add Support", "+  Add support", () =>
+            {
+                if (inputs.supports.Count >= HoloMechInputs.MaxSupports) return;
+                inputs.supports.Add(new SupportInput { kind = SupportKind.Pin, positionCm = FreeSpot() });
+                openSupport = inputs.supports.Count - 1;
+                ListChanged();
+            });
         }
+
+        /// <summary>A position for a new support: midway in the widest gap between existing supports and the ends.</summary>
+        float FreeSpot()
+        {
+            var xs = new List<float> { 0f, inputs.lengthCm };
+            foreach (var s in inputs.supports) xs.Add(s.PositionOn(inputs.lengthCm));
+            xs.Sort();
+            float best = inputs.lengthCm / 2f, gap = -1f;
+            for (int i = 1; i < xs.Count; i++)
+            {
+                if (xs[i] - xs[i - 1] > gap)
+                {
+                    gap = xs[i] - xs[i - 1];
+                    best = (xs[i] + xs[i - 1]) / 2f;
+                }
+            }
+            return Mathf.Round(best);
+        }
+
+        void ApplySupportPreset(int preset)
+        {
+            float L = inputs.lengthCm;
+            inputs.supports.Clear();
+            switch (preset)
+            {
+                case 0:
+                    inputs.supports.Add(new SupportInput { kind = SupportKind.Fixed });
+                    break;
+                case 1:
+                    inputs.supports.Add(new SupportInput { kind = SupportKind.Pin });
+                    inputs.supports.Add(new SupportInput { kind = SupportKind.Pin, atRightEnd = true });
+                    break;
+                case 2:
+                    inputs.supports.Add(new SupportInput { kind = SupportKind.Fixed });
+                    inputs.supports.Add(new SupportInput { kind = SupportKind.Fixed, atRightEnd = true });
+                    break;
+                default:
+                    inputs.supports.Add(new SupportInput { kind = SupportKind.Pin });
+                    inputs.supports.Add(new SupportInput { kind = SupportKind.Pin, positionCm = Mathf.Round(L / 2f) });
+                    inputs.supports.Add(new SupportInput { kind = SupportKind.Pin, atRightEnd = true });
+                    break;
+            }
+
+            openSupport = -1;
+            ListChanged();
+        }
+
+        string SupportSummary(int i)
+        {
+            var s = inputs.supports[i];
+            float x = s.PositionOn(inputs.lengthCm);
+            string where = x <= 0.5f ? " (left end)" : x >= inputs.lengthCm - 0.5f ? " (right end)" : "";
+            return $"S{i + 1}   {(s.kind == SupportKind.Fixed ? "Fixed" : "Pinned")}   x = {x:0} cm{where}";
+        }
+
+        void BuildSupportList()
+        {
+            Clear(supportsHost);
+            for (int i = 0; i < inputs.supports.Count; i++)
+            {
+                int k = i;
+                var s = inputs.supports[i];
+                Entry(supportsHost, $"S{i + 1}", () => SupportSummary(k), openSupport == k,
+                    () => { openSupport = openSupport == k ? -1 : k; RebuildLists(); },
+                    body =>
+                    {
+                        Choice(body, "Type", new[] { "Pinned", "Fixed" }, s.kind == SupportKind.Fixed ? 1 : 0, j =>
+                        {
+                            s.kind = j == 1 ? SupportKind.Fixed : SupportKind.Pin;
+                            RefreshSummaries();
+                        });
+                        TMP_Text label;
+                        var pos = Slider(body, "Distance from left end (cm)", 0, inputs.lengthCm, s.PositionOn(inputs.lengthCm), 1f, "{0:0}", out label, v =>
+                        {
+                            s.atRightEnd = v >= inputs.lengthCm - 0.5f;
+                            s.positionCm = v;
+                            RefreshSummaries();
+                        });
+                        itemSyncs.Add(() =>
+                        {
+                            pos.maxValue = inputs.lengthCm;
+                            UiKit.SetSlider(pos, label, "{0:0}", s.PositionOn(inputs.lengthCm));
+                        });
+                    },
+                    () =>
+                    {
+                        inputs.supports.RemoveAt(k);
+                        openSupport = -1;
+                        ListChanged();
+                    });
+            }
+
+            addSupport.interactable = inputs.supports.Count < HoloMechInputs.MaxSupports;
+        }
+
+        // ---- point loads
+
+        void BuildPoints(RectTransform c)
+        {
+            pointsHost = Column(c, "Point Load List", 4);
+            addPoint = RowButton(c, "Add Point Load", "+  Add point load", () =>
+            {
+                if (inputs.pointLoads.Count >= HoloMechInputs.MaxPointLoads) return;
+                inputs.pointLoads.Add(new PointLoadInput { enabled = true, positionCm = Mathf.Round(inputs.lengthCm / 2f), forceN = 1000f });
+                openPoint = inputs.pointLoads.Count - 1;
+                ListChanged();
+            });
+        }
+
+        void BuildPointList()
+        {
+            Clear(pointsHost);
+            for (int i = 0; i < inputs.pointLoads.Count; i++)
+            {
+                int k = i;
+                var p = inputs.pointLoads[i];
+                Entry(pointsHost, $"P{i + 1}",
+                    () => $"P{k + 1}   {p.forceN:0} N {Arrow(p.direction)}   x = {p.positionCm:0} cm{(p.enabled ? "" : "   (off)")}",
+                    openPoint == k,
+                    () => { openPoint = openPoint == k ? -1 : k; RebuildLists(); },
+                    body =>
+                    {
+                        var on = UiKit.Checkbox(t, body, "Enabled", "Apply this load", p.enabled, null, t.captionSize + 2);
+                        Height(on.gameObject, 48);
+                        on.onValueChanged.AddListener(v => { if (syncing) return; p.enabled = v; RefreshSummaries(); changed?.Invoke(); });
+                        TMP_Text posL;
+                        var pos = Slider(body, "Distance from left end (cm)", 0, inputs.lengthCm, p.positionCm, 1f, "{0:0}", out posL, v => { p.positionCm = v; RefreshSummaries(); });
+                        Slider(body, "Force Magnitude (N)", 0, HoloMechRanges.ForceMaxN, p.forceN, 10f, "{0:0}", out _, v => { p.forceN = v; RefreshSummaries(); });
+                        Choice(body, "Direction", new[] { "Up  ↑", "Down  ↓" }, p.direction == LoadDirection.Up ? 0 : 1,
+                            j => { p.direction = j == 0 ? LoadDirection.Up : LoadDirection.Down; RefreshSummaries(); });
+                        itemSyncs.Add(() =>
+                        {
+                            pos.maxValue = inputs.lengthCm;
+                            UiKit.SetSlider(pos, posL, "{0:0}", p.positionCm);
+                        });
+                    },
+                    () =>
+                    {
+                        inputs.pointLoads.RemoveAt(k);
+                        openPoint = -1;
+                        ListChanged();
+                    });
+            }
+
+            addPoint.interactable = inputs.pointLoads.Count < HoloMechInputs.MaxPointLoads;
+        }
+
+        // ---- uniform loads
+
+        void BuildUniforms(RectTransform c)
+        {
+            uniformsHost = Column(c, "Uniform Load List", 4);
+            addUniform = RowButton(c, "Add Uniform Load", "+  Add uniform load", () =>
+            {
+                if (inputs.uniformLoads.Count >= HoloMechInputs.MaxUniformLoads) return;
+                inputs.uniformLoads.Add(new UniformLoadInput { enabled = true, startCm = 0f, endCm = inputs.lengthCm, intensityNPerM = 1000f });
+                openUniform = inputs.uniformLoads.Count - 1;
+                ListChanged();
+            });
+        }
+
+        void BuildUniformList()
+        {
+            Clear(uniformsHost);
+            for (int i = 0; i < inputs.uniformLoads.Count; i++)
+            {
+                int k = i;
+                var w = inputs.uniformLoads[i];
+                Entry(uniformsHost, $"w{i + 1}",
+                    () => $"w{k + 1}   {w.intensityNPerM:0} N/m {Arrow(w.direction)}   {w.startCm:0}–{w.endCm:0} cm{(w.enabled ? "" : "   (off)")}",
+                    openUniform == k,
+                    () => { openUniform = openUniform == k ? -1 : k; RebuildLists(); },
+                    body =>
+                    {
+                        var on = UiKit.Checkbox(t, body, "Enabled", "Apply this load", w.enabled, null, t.captionSize + 2);
+                        Height(on.gameObject, 48);
+                        on.onValueChanged.AddListener(v => { if (syncing) return; w.enabled = v; RefreshSummaries(); changed?.Invoke(); });
+                        TMP_Text startL = null, endL = null;
+                        Slider start = null, end = null;
+                        void SyncRange()
+                        {
+                            bool was = syncing;
+                            syncing = true;
+                            start.maxValue = end.maxValue = inputs.lengthCm;
+                            UiKit.SetSlider(start, startL, "{0:0}", w.startCm);
+                            UiKit.SetSlider(end, endL, "{0:0}", w.endCm);
+                            syncing = was;
+                        }
+
+                        start = Slider(body, "Start from left end (cm)", 0, inputs.lengthCm, w.startCm, 1f, "{0:0}", out startL, v =>
+                        {
+                            w.startCm = v;
+                            if (w.endCm <= v) w.endCm = Mathf.Min(v + 1f, inputs.lengthCm);
+                            SyncRange();
+                            RefreshSummaries();
+                        });
+                        end = Slider(body, "End from left end (cm)", 0, inputs.lengthCm, w.endCm, 1f, "{0:0}", out endL, v =>
+                        {
+                            w.endCm = v;
+                            if (w.startCm >= v) w.startCm = Mathf.Max(v - 1f, 0f);
+                            SyncRange();
+                            RefreshSummaries();
+                        });
+                        Slider(body, "Intensity (N/m)", 0, HoloMechRanges.UniformMaxNPerM, w.intensityNPerM, 10f, "{0:0}", out _, v => { w.intensityNPerM = v; RefreshSummaries(); });
+                        Choice(body, "Direction", new[] { "Up  ↑", "Down  ↓" }, w.direction == LoadDirection.Up ? 0 : 1,
+                            j => { w.direction = j == 0 ? LoadDirection.Up : LoadDirection.Down; RefreshSummaries(); });
+                        itemSyncs.Add(SyncRange);
+                    },
+                    () =>
+                    {
+                        inputs.uniformLoads.RemoveAt(k);
+                        openUniform = -1;
+                        ListChanged();
+                    });
+            }
+
+            addUniform.interactable = inputs.uniformLoads.Count < HoloMechInputs.MaxUniformLoads;
+        }
+
+        /// <summary>Updates every summary line and the open entries' sliders (without rebuilding the lists).</summary>
+        void RefreshSummaries()
+        {
+            bool was = syncing;
+            syncing = true;
+            foreach (var sync in itemSyncs) sync();
+            syncing = was;
+        }
+
+        // ---- length and material
 
         void BuildBeam(RectTransform c)
         {
             length = Slider(c, "Beam Length (cm)", HoloMechRanges.LengthMinCm, HoloMechRanges.LengthMaxCm, inputs.lengthCm, 1f, "{0:0}", out lengthL, v =>
             {
-                inputs.lengthCm = v;
-                inputs.ClampLoadsToLength();
-                SyncLoads();
+                inputs.SetLength(v);
+                RefreshSummaries();
             });
             modulus = Slider(c, "Elastic Module (GPa)", HoloMechRanges.ModulusMinGPa, HoloMechRanges.ModulusMaxGPa, inputs.elasticModulusGPa, 1f, "{0:0}", out modulusL, v =>
             {
@@ -356,76 +740,17 @@ namespace HoloMech
             });
         }
 
-        void BuildPoint(RectTransform c)
-        {
-            pointOn = UiKit.Checkbox(t, c, "Enabled", "Apply a point load", inputs.pointLoad.enabled, null, t.captionSize + 2);
-            Height(pointOn.gameObject, 48);
-            pointOn.onValueChanged.AddListener(on => { if (syncing) return; inputs.pointLoad.enabled = on; Interactable(); changed?.Invoke(); });
-            pointPos = Slider(c, "Distance from left end (cm)", 0, inputs.lengthCm, inputs.pointLoad.positionCm, 1f, "{0:0}", out pointPosL, v => inputs.pointLoad.positionCm = v);
-            pointForce = Slider(c, "Force Magnitude (N)", 0, HoloMechRanges.ForceMaxN, inputs.pointLoad.forceN, 10f, "{0:0}", out pointForceL, v => inputs.pointLoad.forceN = v);
-            setPointDir = Choice(c, "Direction", new[] { "Up  ↑", "Down  ↓" }, inputs.pointLoad.direction == LoadDirection.Up ? 0 : 1,
-                i => inputs.pointLoad.direction = i == 0 ? LoadDirection.Up : LoadDirection.Down);
-        }
-
-        void BuildUniform(RectTransform c)
-        {
-            uniformOn = UiKit.Checkbox(t, c, "Enabled", "Apply a uniform load", inputs.uniformLoad.enabled, null, t.captionSize + 2);
-            Height(uniformOn.gameObject, 48);
-            uniformOn.onValueChanged.AddListener(on => { if (syncing) return; inputs.uniformLoad.enabled = on; Interactable(); changed?.Invoke(); });
-            uniStart = Slider(c, "Start from left end (cm)", 0, inputs.lengthCm, inputs.uniformLoad.startCm, 1f, "{0:0}", out uniStartL, v =>
-            {
-                inputs.uniformLoad.startCm = v;
-                if (inputs.uniformLoad.endCm <= v) inputs.uniformLoad.endCm = Mathf.Min(v + 1f, inputs.lengthCm);
-                SyncLoads();
-            });
-            uniEnd = Slider(c, "End from left end (cm)", 0, inputs.lengthCm, inputs.uniformLoad.endCm, 1f, "{0:0}", out uniEndL, v =>
-            {
-                inputs.uniformLoad.endCm = v;
-                if (inputs.uniformLoad.startCm >= v) inputs.uniformLoad.startCm = Mathf.Max(v - 1f, 0f);
-                SyncLoads();
-            });
-            uniForce = Slider(c, "Intensity (N/m)", 0, HoloMechRanges.UniformMaxNPerM, inputs.uniformLoad.intensityNPerM, 10f, "{0:0}", out uniForceL, v => inputs.uniformLoad.intensityNPerM = v);
-            setUniformDir = Choice(c, "Direction", new[] { "Up  ↑", "Down  ↓" }, inputs.uniformLoad.direction == LoadDirection.Up ? 0 : 1,
-                i => inputs.uniformLoad.direction = i == 0 ? LoadDirection.Up : LoadDirection.Down);
-        }
-
-        void Interactable()
-        {
-            pointPos.interactable = pointForce.interactable = inputs.pointLoad.enabled;
-            uniStart.interactable = uniEnd.interactable = uniForce.interactable = inputs.uniformLoad.enabled;
-        }
-
-        void SyncLoads()
-        {
-            bool was = syncing;
-            syncing = true;
-            pointPos.maxValue = uniStart.maxValue = uniEnd.maxValue = inputs.lengthCm;
-            UiKit.SetSlider(pointPos, pointPosL, "{0:0}", inputs.pointLoad.positionCm);
-            UiKit.SetSlider(uniStart, uniStartL, "{0:0}", inputs.uniformLoad.startCm);
-            UiKit.SetSlider(uniEnd, uniEndL, "{0:0}", inputs.uniformLoad.endCm);
-            syncing = was;
-        }
-
-        /// <summary>Refreshes every control from the inputs (after the guided flow changed them).</summary>
+        /// <summary>Refreshes every control from the inputs (after the guided flow or the on-site alignment changed them).</summary>
         public void Sync()
         {
             syncing = true;
             setSection((int)inputs.section);
             BuildDimensions();
-            setLeft(Array.IndexOf(Ends, inputs.leftEnd));
-            setRight(Array.IndexOf(Ends, inputs.rightEnd));
             setMaterial(Array.IndexOf(Presets, inputs.material));
             UiKit.SetSlider(length, lengthL, "{0:0}", inputs.lengthCm);
             UiKit.SetSlider(modulus, modulusL, "{0:0}", inputs.elasticModulusGPa);
-            pointOn.isOn = inputs.pointLoad.enabled;
-            uniformOn.isOn = inputs.uniformLoad.enabled;
-            UiKit.SetSlider(pointForce, pointForceL, "{0:0}", inputs.pointLoad.forceN);
-            UiKit.SetSlider(uniForce, uniForceL, "{0:0}", inputs.uniformLoad.intensityNPerM);
-            setPointDir(inputs.pointLoad.direction == LoadDirection.Up ? 0 : 1);
-            setUniformDir(inputs.uniformLoad.direction == LoadDirection.Up ? 0 : 1);
             syncing = false;
-            SyncLoads();
-            Interactable();
+            RebuildLists();
         }
     }
 }
