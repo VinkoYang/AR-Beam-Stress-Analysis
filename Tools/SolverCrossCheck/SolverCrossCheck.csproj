@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Runs the app's beam solver (Assets/ARBeam/Mechanics, pure C#, no UnityEngine) and the test-only stiffness
+    reference outside Unity, on the cases in cases.json. Output: csharp_results.json, read by crosscheck.py.
+    Unity ignores this folder because it is outside Assets/.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../Assets/ARBeam/Mechanics/*.cs" />
+    <Compile Include="../../Assets/ARBeam/Tests/EditMode/StiffnessReferenceSolver.cs" />
+  </ItemGroup>
+
+</Project>
