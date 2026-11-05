@@ -1,0 +1,477 @@
+{
+  "solver": "ARBeam.Mechanics.BeamSolver (generalised Macaulay, closed form)",
+  "reference": "StiffnessReferenceSolver (Hermite cubic elements, \u003E= 400 elements)",
+  "results": [
+    {
+      "id": "C01",
+      "reactions": [
+        {
+          "x": 0,
+          "force": 1000,
+          "moment": 2000
+        }
+      ],
+      "peak_moment": {
+        "x": 0,
+        "value": -2000
+      },
+      "peak_deflection": {
+        "x": 2,
+        "value": -0.0013333333333333333
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": 999.9996180897579,
+            "moment": 1999.9993885836243
+          }
+        ],
+        "nodes": 401,
+        "max_abs_nodal_deflection": 0.0013333333333333333,
+        "max_nodal_deflection_diff": 3.605946771647467E-10
+      },
+      "solve_us_median_pc": 7.1000000000000005
+    },
+    {
+      "id": "C02",
+      "reactions": [
+        {
+          "x": 0,
+          "force": 5000,
+          "moment": 0
+        },
+        {
+          "x": 4,
+          "force": 5000,
+          "moment": 0
+        }
+      ],
+      "peak_moment": {
+        "x": 2,
+        "value": 10000
+      },
+      "peak_deflection": {
+        "x": 2,
+        "value": -0.006666666666666665
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": 4999.999992847443,
+            "moment": 0
+          },
+          {
+            "x": 4,
+            "force": 4999.99996984005,
+            "moment": 0
+          }
+        ],
+        "nodes": 401,
+        "max_abs_nodal_deflection": 0.006666666666666665,
+        "max_nodal_deflection_diff": 4.877606218228747E-11
+      },
+      "solve_us_median_pc": 10.8
+    },
+    {
+      "id": "C03",
+      "reactions": [
+        {
+          "x": 0,
+          "force": 7000,
+          "moment": 0
+        },
+        {
+          "x": 4,
+          "force": 3000,
+          "moment": 0
+        }
+      ],
+      "peak_moment": {
+        "x": 1.2,
+        "value": 8400
+      },
+      "peak_deflection": {
+        "x": 1.796971781085559,
+        "value": -0.005346015144565709
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": 6999.999831199646,
+            "moment": 0
+          },
+          {
+            "x": 4,
+            "force": 2999.9999804496765,
+            "moment": 0
+          }
+        ],
+        "nodes": 401,
+        "max_abs_nodal_deflection": 0.005346,
+        "max_nodal_deflection_diff": 3.508556119247164E-11
+      },
+      "solve_us_median_pc": 15.100000000000001
+    },
+    {
+      "id": "C04",
+      "reactions": [
+        {
+          "x": 0,
+          "force": 4000,
+          "moment": 0
+        },
+        {
+          "x": 4,
+          "force": 4000,
+          "moment": 0
+        }
+      ],
+      "peak_moment": {
+        "x": 2,
+        "value": 4000
+      },
+      "peak_deflection": {
+        "x": 2,
+        "value": -0.0033333333333333335
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": 3999.999977648258,
+            "moment": 0
+          },
+          {
+            "x": 4,
+            "force": 3999.999982714653,
+            "moment": 0
+          }
+        ],
+        "nodes": 401,
+        "max_abs_nodal_deflection": 0.0033333333333333335,
+        "max_nodal_deflection_diff": 2.429819713489767E-11
+      },
+      "solve_us_median_pc": 8
+    },
+    {
+      "id": "C05",
+      "reactions": [
+        {
+          "x": 0,
+          "force": 5000,
+          "moment": 5000.000000000001
+        },
+        {
+          "x": 4,
+          "force": 5000,
+          "moment": -4999.999999999999
+        }
+      ],
+      "peak_moment": {
+        "x": 0,
+        "value": -5000.000000000001
+      },
+      "peak_deflection": {
+        "x": 2,
+        "value": -0.0016666666666666672
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": 5000.000003530644,
+            "moment": 5000.000002595014
+          },
+          {
+            "x": 4,
+            "force": 4999.999969121534,
+            "moment": -4999.999980742288
+          }
+        ],
+        "nodes": 401,
+        "max_abs_nodal_deflection": 0.0016666666666666672,
+        "max_nodal_deflection_diff": 2.7887163064899134E-12
+      },
+      "solve_us_median_pc": 21.5
+    },
+    {
+      "id": "C06",
+      "reactions": [
+        {
+          "x": 0,
+          "force": 5000,
+          "moment": 4000
+        },
+        {
+          "x": 4,
+          "force": 3000,
+          "moment": 0
+        }
+      ],
+      "peak_moment": {
+        "x": 0,
+        "value": -4000
+      },
+      "peak_deflection": {
+        "x": 2.313859338365491,
+        "value": -0.0013865271310921543
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": 4999.999986525625,
+            "moment": 3999.9999843473483
+          },
+          {
+            "x": 4,
+            "force": 2999.99996560812,
+            "moment": 0
+          }
+        ],
+        "nodes": 401,
+        "max_abs_nodal_deflection": 0.0013865188837499994,
+        "max_nodal_deflection_diff": 1.2216913028093024E-11
+      },
+      "solve_us_median_pc": 14.8
+    },
+    {
+      "id": "C07",
+      "reactions": [
+        {
+          "x": 0,
+          "force": -1666.666666666667,
+          "moment": 0
+        },
+        {
+          "x": 3,
+          "force": 6666.666666666667,
+          "moment": 0
+        }
+      ],
+      "peak_moment": {
+        "x": 3,
+        "value": -5000.000000000001
+      },
+      "peak_deflection": {
+        "x": 4,
+        "value": -0.0033333333333333353
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": -1666.6666647791862,
+            "moment": 0
+          },
+          {
+            "x": 3,
+            "force": 6666.666661918163,
+            "moment": 0
+          }
+        ],
+        "nodes": 401,
+        "max_abs_nodal_deflection": 0.0033333333333333353,
+        "max_nodal_deflection_diff": 7.426184667203017E-12
+      },
+      "solve_us_median_pc": 14
+    },
+    {
+      "id": "C08",
+      "reactions": [
+        {
+          "x": 0,
+          "force": 2999.999999999996,
+          "moment": 0
+        },
+        {
+          "x": 4,
+          "force": 10000.000000000007,
+          "moment": 0
+        },
+        {
+          "x": 8,
+          "force": 2999.999999999997,
+          "moment": 0
+        }
+      ],
+      "peak_moment": {
+        "x": 4,
+        "value": -4000.0000000000164
+      },
+      "peak_deflection": {
+        "x": 6.313859338365514,
+        "value": -0.0013865271310921925
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": 2999.9999939724803,
+            "moment": 0
+          },
+          {
+            "x": 4,
+            "force": 10000.00000304333,
+            "moment": 0
+          },
+          {
+            "x": 8,
+            "force": 3000.0000010654326,
+            "moment": 0
+          }
+        ],
+        "nodes": 401,
+        "max_abs_nodal_deflection": 0.001386506240000033,
+        "max_nodal_deflection_diff": 1.344666565594732E-12
+      },
+      "solve_us_median_pc": 32.300000000000004
+    },
+    {
+      "id": "C09",
+      "reactions": [
+        {
+          "x": 1,
+          "force": 6750,
+          "moment": -750
+        },
+        {
+          "x": 4,
+          "force": 2250,
+          "moment": 0
+        }
+      ],
+      "peak_moment": {
+        "x": 1,
+        "value": -3000
+      },
+      "peak_deflection": {
+        "x": 0,
+        "value": -0.0004999999999999999
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 1,
+            "force": 6750.000002961839,
+            "moment": -749.9999884662273
+          },
+          {
+            "x": 4,
+            "force": 2249.9999983757734,
+            "moment": 0
+          }
+        ],
+        "nodes": 401,
+        "max_abs_nodal_deflection": 0.0004999999999999999,
+        "max_nodal_deflection_diff": 8.784805565278941E-13
+      },
+      "solve_us_median_pc": 19.900000000000002
+    },
+    {
+      "id": "C10",
+      "reactions": [
+        {
+          "x": 0,
+          "force": 2399.9999999999973,
+          "moment": 0
+        },
+        {
+          "x": 3,
+          "force": 6600,
+          "moment": 0
+        },
+        {
+          "x": 6,
+          "force": 6600.000000000006,
+          "moment": 0
+        },
+        {
+          "x": 9,
+          "force": 2399.9999999999964,
+          "moment": 0
+        }
+      ],
+      "peak_moment": {
+        "x": 6,
+        "value": -1800.0000000000146
+      },
+      "peak_deflection": {
+        "x": 7.661890196695592,
+        "value": -0.0005576212756970562
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": 2399.999998001104,
+            "moment": 0
+          },
+          {
+            "x": 3,
+            "force": 6599.999999099787,
+            "moment": 0
+          },
+          {
+            "x": 6,
+            "force": 6599.999994475771,
+            "moment": 0
+          },
+          {
+            "x": 9,
+            "force": 2399.999996700978,
+            "moment": 0
+          }
+        ],
+        "nodes": 403,
+        "max_abs_nodal_deflection": 0.0005576117700847117,
+        "max_nodal_deflection_diff": 1.3706525064244302E-12
+      },
+      "solve_us_median_pc": 70.1
+    },
+    {
+      "id": "C11",
+      "reactions": [
+        {
+          "x": 0,
+          "force": 9270.833333333334,
+          "moment": 0
+        },
+        {
+          "x": 6,
+          "force": 10729.166666666666,
+          "moment": 0
+        }
+      ],
+      "peak_moment": {
+        "x": 4,
+        "value": 16458.333333333336
+      },
+      "peak_deflection": {
+        "x": 3.0687250984799004,
+        "value": -0.03014048507801301
+      },
+      "stiffness": {
+        "reactions": [
+          {
+            "x": 0,
+            "force": 9270.833430409431,
+            "moment": 0
+          },
+          {
+            "x": 6,
+            "force": 10729.166686606051,
+            "moment": 0
+          }
+        ],
+        "nodes": 403,
+        "max_abs_nodal_deflection": 0.030140475725791226,
+        "max_nodal_deflection_diff": 3.533137289679633E-10
+      },
+      "solve_us_median_pc": 11.5
+    }
+  ]
+}
