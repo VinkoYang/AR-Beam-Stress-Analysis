@@ -23,6 +23,8 @@ namespace HoloMech
     ///
     /// The "Dimensions" rows (PI's request, 2026-11-05) set the beam length and section to the measured member in mm steps.
     /// The beam's origin is its left end, so a length change leaves the left end where it is, as the two-point alignment does.
+    /// Under the Gantry preset, more rows move the two pins and the trolley: the real legs and trolley are in plain view, so
+    /// only the beam, the support symbols and the load arrow are drawn (PI's decision, 2026-11-05).
     ///
     /// The controls live on a card in the Workbench beam panel; <see cref="HoloMechApp"/> creates this component when
     /// it runs in the Quest window.
@@ -61,6 +63,7 @@ namespace HoloMech
         float sizeStepMm = 1f;
         RectTransform sizeHost;
         SectionType builtSection;
+        bool builtGantry;
 
         /// <summary>A "Dimensions" row's value label; refreshed when the value changes (also from the Workbench sliders).</summary>
         class SizeRow
@@ -98,6 +101,7 @@ namespace HoloMech
 
             if (window != null) window.Resetting += () => SetSiteMode(false);
             beam.Solved += _ => { if (siteMode) ApplyTrueScale(); };
+            workbench.GantryApplied += () => SetStatus(WorkbenchLayout.GantryDefaultsNote + ".");
             BuildCard(workbench.AddCard(true, "On-site Overlay (MR)"));
             BuildLabel();
         }
@@ -203,7 +207,10 @@ namespace HoloMech
             sizeRows.Add(new SizeRow { value = value, mm = mm });
         }
 
-        /// <summary>One row per length of the current section type (the type itself is still chosen in the Workbench).</summary>
+        /// <summary>
+        /// One row per length of the current section type (the type itself is still chosen in the Workbench); under the
+        /// Gantry preset also the two supports and the trolley.
+        /// </summary>
         void BuildSizeRows()
         {
             for (int i = sizeHost.childCount - 1; i >= 0; i--)
@@ -215,15 +222,31 @@ namespace HoloMech
 
             sizeRows.Clear();
             builtSection = inputs.section;
+            builtGantry = inputs.IsGantry;
             foreach (var d in SiteAdjust.For(inputs.section))
-                AddSizeRow(SiteAdjust.Caption(d), () => SiteAdjust.ValueMm(inputs, d), delta => StepDimension(d, delta));
+            {
+                string caption = SiteAdjust.Caption(d);
+                Func<float> mm = () => SiteAdjust.ValueMm(inputs, d);
+                AddSizeRow(caption, mm, delta => Report(caption, mm, SiteAdjust.Step(inputs, d, delta)));
+            }
+
+            if (builtGantry)
+            {
+                AddGantryRow("Left support x", () => SiteAdjust.GantrySupportMm(inputs, false), delta => SiteAdjust.StepGantrySupport(inputs, false, delta));
+                AddGantryRow("Right support x", () => SiteAdjust.GantrySupportMm(inputs, true), delta => SiteAdjust.StepGantrySupport(inputs, true, delta));
+                AddGantryRow("Trolley x", () => SiteAdjust.TrolleyMm(inputs), delta => SiteAdjust.StepTrolley(inputs, delta));
+            }
+
             RefreshSizeRows();
             LayoutRebuilder.MarkLayoutForRebuild(sizeHost);
         }
 
+        void AddGantryRow(string caption, Func<float> mm, Func<float, SiteStepResult> step)
+            => AddSizeRow(caption, mm, delta => Report(caption, mm, step(delta)));
+
         void RefreshSizeRows()
         {
-            if (inputs.section != builtSection)
+            if (inputs.section != builtSection || inputs.IsGantry != builtGantry)
             {
                 BuildSizeRows();
                 return;
@@ -238,11 +261,11 @@ namespace HoloMech
             }
         }
 
-        void StepDimension(SiteDimension d, float deltaMm)
+        /// <summary>After a row's step: update the Workbench, re-solve and say what happened.</summary>
+        void Report(string caption, Func<float> mm, SiteStepResult result)
         {
-            var result = SiteAdjust.Step(inputs, d, deltaMm);
             InputsEdited();
-            string value = $"{SiteAdjust.Caption(d)} = {SiteAdjust.ValueMm(inputs, d):0.0} mm";
+            string value = $"{caption} = {mm():0.0} mm";
             switch (result)
             {
                 case SiteStepResult.AtLimit:
@@ -366,7 +389,9 @@ namespace HoloMech
         {
             if (!siteMode) return;
             capture = Capture.LeftEnd;
-            SetStatus("Touch the LEFT end of the real beam with a controller, then press A (right) or X (left).");
+            SetStatus(inputs.IsGantry
+                ? "Gantry: touch the ends of the BEAM, not the legs. LEFT end first, with a controller, then press A (right) or X (left)."
+                : "Touch the LEFT end of the real beam with a controller, then press A (right) or X (left).");
         }
 
         void Update()
@@ -421,7 +446,8 @@ namespace HoloMech
                 lengthNote = $" Beam length set to {cm:0} cm.";
             }
 
-            SetStatus($"Aligned. Touched span {span * 100f:0.0} cm, height difference {(right.y - left.y) * 100f:0.0} cm.{lengthNote}");
+            string gantryNote = inputs.IsGantry ? " That is the whole beam; set the supports with their rows." : "";
+            SetStatus($"Aligned. Touched span {span * 100f:0.0} cm, height difference {(right.y - left.y) * 100f:0.0} cm.{lengthNote}{gantryNote}");
             LogAlignment(left, right, span);
         }
 

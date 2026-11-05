@@ -44,6 +44,14 @@ namespace HoloMech
         /// <summary>Raised when a side panel is collapsed or expanded (the camera re-frames).</summary>
         public event Action LayoutChanged;
 
+        /// <summary>Raised when the Gantry preset was pressed (the on-site card repeats the note below).</summary>
+        public event Action GantryApplied;
+
+        /// <summary>The Gantry preset's values are placeholders until the real gantry is measured.</summary>
+        public const string GantryDefaultsNote = "Defaults — set span, supports and section to the measured gantry (T257)";
+
+        TMP_Text gantryNote;
+
         public bool LeftCollapsed { get; private set; }
         public bool RightCollapsed { get; private set; }
 
@@ -65,7 +73,7 @@ namespace HoloMech
         public float FreeLeft => LeftCollapsed ? 0.04f : CentreLeft;
         public float FreeRight => RightCollapsed ? 0.96f : CentreRight;
 
-        static readonly MaterialPreset[] Presets = { MaterialPreset.Steel, MaterialPreset.Concrete, MaterialPreset.Wood, MaterialPreset.Custom };
+        static readonly MaterialPreset[] Presets = { MaterialPreset.Steel, MaterialPreset.Concrete, MaterialPreset.Wood, MaterialPreset.Aluminum, MaterialPreset.Custom };
 
         /// <summary>Left edge of the free centre area and right edge, as fractions of the 1920-wide reference.</summary>
         public const float CentreLeft = 600f / 1920f, CentreRight = 1320f / 1920f;
@@ -315,7 +323,7 @@ namespace HoloMech
             for (int i = 0; i < captions.Length; i++)
             {
                 int k = i;
-                var b = UiKit.Button(t, row, captions[i], captions[i], t.captionSize);
+                var b = UiKit.Button(t, row, captions[i], captions[i], t.captionSize - 2);
                 var rt = b.GetComponent<RectTransform>();
                 rt.anchorMin = new Vector2((float)i / captions.Length, 0);
                 rt.anchorMax = new Vector2((float)(i + 1) / captions.Length, 1);
@@ -396,6 +404,7 @@ namespace HoloMech
             bool was = syncing;
             syncing = true;
             itemSyncs.Clear();
+            gantryNote.gameObject.SetActive(inputs.IsGantry);
             BuildSupportList();
             BuildPointList();
             BuildUniformList();
@@ -477,11 +486,15 @@ namespace HoloMech
 
         void BuildSupports(RectTransform c)
         {
-            ButtonRow(c, "Presets", new[] { "Cantilever", "Simple", "Fixed-Fixed", "2 Spans" }, ApplySupportPreset);
+            ButtonRow(c, "Presets", new[] { "Cantilever", "Simple", "Fixed-Fixed", "2 Spans", "Gantry" }, ApplySupportPreset);
+            gantryNote = UiKit.Label(t, c, "Gantry Note", GantryDefaultsNote, t.regular, t.captionSize, t.textSecondary, TextAlignmentOptions.TopLeft);
+            gantryNote.textWrappingMode = TextWrappingModes.Normal;
+            Height(gantryNote.gameObject, 50);
             supportsHost = Column(c, "Support List", 4);
             addSupport = RowButton(c, "Add Support", "+  Add support", () =>
             {
                 if (inputs.supports.Count >= HoloMechInputs.MaxSupports) return;
+                inputs.preset = SupportPreset.Custom;
                 inputs.supports.Add(new SupportInput { kind = SupportKind.Pin, positionCm = FreeSpot() });
                 openSupport = inputs.supports.Count - 1;
                 ListChanged();
@@ -508,7 +521,20 @@ namespace HoloMech
 
         void ApplySupportPreset(int preset)
         {
+            if (preset == 4)
+            {
+                inputs.ApplyGantryPreset();
+                openSupport = -1;
+                openPoint = 0;
+                openUniform = -1;
+                Sync(); // the preset also sets the section, material and loads
+                changed?.Invoke();
+                GantryApplied?.Invoke();
+                return;
+            }
+
             float L = inputs.lengthCm;
+            inputs.preset = (SupportPreset)(preset + 1);
             inputs.supports.Clear();
             switch (preset)
             {
@@ -556,6 +582,8 @@ namespace HoloMech
                         Choice(body, "Type", new[] { "Pinned", "Fixed" }, s.kind == SupportKind.Fixed ? 1 : 0, j =>
                         {
                             s.kind = j == 1 ? SupportKind.Fixed : SupportKind.Pin;
+                            inputs.preset = SupportPreset.Custom;
+                            gantryNote.gameObject.SetActive(false);
                             RefreshSummaries();
                         });
                         TMP_Text label;
@@ -574,6 +602,7 @@ namespace HoloMech
                     () =>
                     {
                         inputs.supports.RemoveAt(k);
+                        inputs.preset = SupportPreset.Custom;
                         openSupport = -1;
                         ListChanged();
                     });
@@ -724,18 +753,18 @@ namespace HoloMech
                 inputs.SetLength(v);
                 RefreshSummaries();
             });
-            modulus = Slider(c, "Elastic Module (GPa)", HoloMechRanges.ModulusMinGPa, HoloMechRanges.ModulusMaxGPa, inputs.elasticModulusGPa, 1f, "{0:0}", out modulusL, v =>
+            modulus = Slider(c, "Elastic Module (GPa)", HoloMechRanges.ModulusMinGPa, HoloMechRanges.ModulusMaxGPa, inputs.elasticModulusGPa, 1f, "{0:0.#}", out modulusL, v =>
             {
                 inputs.elasticModulusGPa = v;
                 inputs.material = MaterialPreset.Custom;
-                setMaterial(3);
+                setMaterial(Array.IndexOf(Presets, MaterialPreset.Custom));
             });
-            setMaterial = Choice(c, "", new[] { "Steel", "Concrete", "Wood", "Custom" }, Array.IndexOf(Presets, inputs.material), i =>
+            setMaterial = Choice(c, "", new[] { "Steel", "Concrete", "Wood", "Aluminum", "Custom" }, Array.IndexOf(Presets, inputs.material), i =>
             {
                 inputs.ApplyMaterial(Presets[i]);
                 bool was = syncing;
                 syncing = true;
-                UiKit.SetSlider(modulus, modulusL, "{0:0}", inputs.elasticModulusGPa);
+                UiKit.SetSlider(modulus, modulusL, "{0:0.#}", inputs.elasticModulusGPa);
                 syncing = was;
             });
         }
@@ -748,7 +777,7 @@ namespace HoloMech
             BuildDimensions();
             setMaterial(Array.IndexOf(Presets, inputs.material));
             UiKit.SetSlider(length, lengthL, "{0:0}", inputs.lengthCm);
-            UiKit.SetSlider(modulus, modulusL, "{0:0}", inputs.elasticModulusGPa);
+            UiKit.SetSlider(modulus, modulusL, "{0:0.#}", inputs.elasticModulusGPa);
             syncing = false;
             RebuildLists();
         }

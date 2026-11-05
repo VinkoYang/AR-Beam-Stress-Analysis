@@ -17,6 +17,20 @@ namespace HoloMech
         Concrete,
         Wood,
         Custom,
+
+        // After Custom because the scenes store this enum as a number (material: 3 = Custom). The buttons list it before Custom.
+        Aluminum,
+    }
+
+    /// <summary>The Workbench preset last pressed; adding, deleting or retyping a support goes back to Custom.</summary>
+    public enum SupportPreset
+    {
+        Custom,
+        Cantilever,
+        Simple,
+        FixedFixed,
+        TwoSpans,
+        Gantry,
     }
 
     public enum LoadDirection
@@ -60,6 +74,7 @@ namespace HoloMech
                 case MaterialPreset.Steel: return 200f;
                 case MaterialPreset.Concrete: return 30f;
                 case MaterialPreset.Wood: return 11f;
+                case MaterialPreset.Aluminum: return (float)(BeamMaterial.Aluminum6061T6.ElasticModulus / 1e9);
                 default: return float.NaN;
             }
         }
@@ -146,6 +161,8 @@ namespace HoloMech
             new SupportInput { kind = SupportKind.Fixed, atRightEnd = true },
         };
 
+        public SupportPreset preset = SupportPreset.Custom;
+
         public float lengthCm = 200f;
         public MaterialPreset material = MaterialPreset.Custom;
         public float elasticModulusGPa = 20f;
@@ -158,6 +175,9 @@ namespace HoloMech
 
         /// <summary>Upper limits of the Workbench lists, so the panels stay readable on a headset.</summary>
         public const int MaxPointLoads = 8, MaxUniformLoads = 4, MaxSupports = 6;
+
+        /// <summary>Supports closer than this are reported as being at the same place.</summary>
+        public const float MinSupportGapCm = 1f;
 
         /// <summary>The first point load (the paper's single Point-Load column in the Guided flow).</summary>
         public PointLoadInput pointLoad
@@ -219,6 +239,7 @@ namespace HoloMech
 
         void SetEnd(bool right, EndCondition condition)
         {
+            preset = SupportPreset.Custom;
             supports.RemoveAll(s => IsAtEnd(s, right));
             if (condition == EndCondition.Free) return;
             var kind = condition == EndCondition.Fixed ? SupportKind.Fixed : SupportKind.Pin;
@@ -246,6 +267,27 @@ namespace HoloMech
             material = preset;
             if (preset != MaterialPreset.Custom) elasticModulusGPa = HoloMechRanges.PresetModulusGPa(preset);
         }
+
+        /// <summary>
+        /// The lab gantry: aluminium I-beam on two pins at the ends, one point load (the trolley) at midspan. Length and
+        /// section keep their current values and the trolley gets the usual new-load force: all of them are placeholders
+        /// until the gantry is measured (T257), so nothing here may be read as a measured value.
+        /// </summary>
+        public void ApplyGantryPreset()
+        {
+            section = SectionType.IBeam;
+            ApplyMaterial(MaterialPreset.Aluminum);
+            supports.Clear();
+            supports.Add(new SupportInput { kind = SupportKind.Pin });
+            supports.Add(new SupportInput { kind = SupportKind.Pin, atRightEnd = true });
+            pointLoads.Clear();
+            pointLoads.Add(new PointLoadInput { enabled = true, positionCm = lengthCm / 2f, forceN = 1000f, direction = LoadDirection.Down });
+            uniformLoads.Clear();
+            preset = SupportPreset.Gantry;
+        }
+
+        /// <summary>True while the two supports and the trolley load of the Gantry preset are there to adjust.</summary>
+        public bool IsGantry => preset == SupportPreset.Gantry && supports.Count == 2 && pointLoads.Count >= 1;
 
         /// <summary>A, I, c of the selected section in SI units.</summary>
         public BeamSection SectionProperties()
@@ -348,7 +390,7 @@ namespace HoloMech
             positions.Sort();
             for (int i = 1; i < positions.Count; i++)
             {
-                if (positions[i] - positions[i - 1] < 1f)
+                if (positions[i] - positions[i - 1] < MinSupportGapCm)
                 {
                     problems.Add($"Two supports are at the same place (x = {positions[i]:0} cm). Move one of them.");
                     return problems;

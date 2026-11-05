@@ -138,7 +138,7 @@ namespace HoloMech
                 inputs.lengthCm, 1f, "{0:0}", out lengthLabel, v => inputs.SetLength(v));
             Fit(lengthSlider.transform.parent, -28, 84);
             modulusSlider = UiKit.LabeledSlider(t, panel, "Modulus", "Elastic Module (GPa)", HoloMechRanges.ModulusMinGPa, HoloMechRanges.ModulusMaxGPa,
-                inputs.elasticModulusGPa, 1f, "{0:0}", out modulusLabel, v =>
+                inputs.elasticModulusGPa, 1f, "{0:0.#}", out modulusLabel, v =>
                 {
                     if (syncing) return;
                     inputs.elasticModulusGPa = v;
@@ -198,7 +198,7 @@ namespace HoloMech
             }
 
             UiKit.SetSlider(lengthSlider, lengthLabel, "{0:0}", inputs.lengthCm);
-            UiKit.SetSlider(modulusSlider, modulusLabel, "{0:0}", inputs.elasticModulusGPa);
+            UiKit.SetSlider(modulusSlider, modulusLabel, "{0:0.#}", inputs.elasticModulusGPa);
             HighlightMaterial();
             syncing = false;
         }

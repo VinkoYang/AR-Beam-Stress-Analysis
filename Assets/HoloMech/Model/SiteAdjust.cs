@@ -93,6 +93,45 @@ namespace HoloMech
             return limited ? SiteStepResult.AtLimit : SiteStepResult.Changed;
         }
 
+        /// <summary>The Gantry preset's left or right support (by position, as a Workbench slider can swap them).</summary>
+        static SupportInput GantrySupport(HoloMechInputs i, bool right)
+        {
+            var a = i.supports[0];
+            var b = i.supports[1];
+            bool aIsLeft = a.PositionOn(i.lengthCm) <= b.PositionOn(i.lengthCm);
+            return aIsLeft == right ? b : a;
+        }
+
+        public static float GantrySupportMm(HoloMechInputs i, bool right) => GantrySupport(i, right).PositionOn(i.lengthCm) * 10f;
+
+        /// <summary>
+        /// Moves a gantry support along the beam, keeping the two apart and in order. A support leaves the right end by
+        /// any step, however small, and follows the length again only when it is back on the end.
+        /// </summary>
+        public static SiteStepResult StepGantrySupport(HoloMechInputs i, bool right, float deltaMm)
+        {
+            var support = GantrySupport(i, right);
+            float other = GantrySupport(i, !right).PositionOn(i.lengthCm);
+            float min = right ? other + HoloMechInputs.MinSupportGapCm : 0f;
+            float max = right ? i.lengthCm : other - HoloMechInputs.MinSupportGapCm;
+            float wanted = RoundCm(support.PositionOn(i.lengthCm) + deltaMm / 10f);
+            float value = Math.Min(Math.Max(wanted, min), max);
+            support.positionCm = value;
+            support.atRightEnd = value >= i.lengthCm;
+            return value != wanted ? SiteStepResult.AtLimit : SiteStepResult.Changed;
+        }
+
+        public static float TrolleyMm(HoloMechInputs i) => i.pointLoads[0].positionCm * 10f;
+
+        /// <summary>Moves the trolley (the Gantry preset's point load) along the beam.</summary>
+        public static SiteStepResult StepTrolley(HoloMechInputs i, float deltaMm)
+        {
+            var trolley = i.pointLoads[0];
+            float wanted = RoundCm(trolley.positionCm + deltaMm / 10f);
+            trolley.positionCm = Math.Min(Math.Max(wanted, 0f), i.lengthCm);
+            return trolley.positionCm != wanted ? SiteStepResult.AtLimit : SiteStepResult.Changed;
+        }
+
         static float RoundCm(float cm) => (float)Math.Round(cm, 2);
 
         static void Range(SiteDimension d, out float min, out float max)
