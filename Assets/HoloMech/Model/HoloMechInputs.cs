@@ -435,7 +435,7 @@ namespace HoloMech
             return BeamSolver.TrySolve(ToModel(), out solution, out error);
         }
 
-        static double Signed(float magnitude, LoadDirection direction)
+        internal static double Signed(float magnitude, LoadDirection direction)
             => direction == LoadDirection.Down ? Math.Abs(magnitude) : -Math.Abs(magnitude);
 
         public HoloMechInputs Clone()

@@ -75,6 +75,11 @@ namespace HoloMech
 
         readonly List<SizeRow> sizeRows = new List<SizeRow>();
 
+        Button snapshotButton;
+
+        /// <summary>The saved spatial anchor, written into the snapshots; empty when there is none.</summary>
+        string savedUuid = "";
+
         /// <summary>Where the controller touched the real beam: on its top surface, or (by eye) on its axis.</summary>
         bool touchTop = true;
         bool spanSetsLength = true;
@@ -145,6 +150,15 @@ namespace HoloMech
             v.childForceExpandHeight = false;
             v.childForceExpandWidth = true;
             BuildSizeRows();
+
+            snapshotButton = UiKit.Button(t, c, "Save snapshot", "Save snapshot", t.captionSize + 2);
+            Height(snapshotButton.gameObject, 52);
+            snapshotButton.onClick.AddListener(() =>
+            {
+                if (!siteMode) return;
+                if (WriteSnapshot(SiteSnapshot.TriggerManual)) SetStatus("Snapshot saved to site_snapshots.csv and snapshots/.");
+                else SetStatus("Could not write the snapshot. See the log.");
+            });
             Interactable();
         }
 
@@ -290,6 +304,7 @@ namespace HoloMech
         void Interactable()
         {
             if (alignButton != null) alignButton.interactable = siteMode;
+            if (snapshotButton != null) snapshotButton.interactable = siteMode;
         }
 
         void SetStatus(string text)
@@ -449,6 +464,7 @@ namespace HoloMech
             string gantryNote = inputs.IsGantry ? " That is the whole beam; set the supports with their rows." : "";
             SetStatus($"Aligned. Touched span {span * 100f:0.0} cm, height difference {(right.y - left.y) * 100f:0.0} cm.{lengthNote}{gantryNote}");
             LogAlignment(left, right, span);
+            WriteSnapshot(SiteSnapshot.TriggerAlign);
         }
 
         /// <summary>
@@ -476,6 +492,46 @@ namespace HoloMech
             {
                 Debug.LogWarning("[SitePlacement] could not write the alignment log: " + e.Message);
             }
+        }
+
+        // ------------------------------------------------------------------ snapshots
+
+        /// <summary>
+        /// Appends a row to site_snapshots.csv and writes snapshots/site_snapshot_&lt;UTC time&gt;.json with the complete inputs, both
+        /// in the app's persistent data folder (see <see cref="LogAlignment"/>). Returns false if the files could not be written.
+        /// </summary>
+        bool WriteSnapshot(string trigger)
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+                var snapshot = CurrentSnapshot(trigger, now);
+                string path = Path.Combine(Application.persistentDataPath, "site_snapshots.csv");
+                bool header = !File.Exists(path);
+                using (var w = new StreamWriter(path, true))
+                {
+                    if (header) w.WriteLine(SiteSnapshot.CsvHeader);
+                    w.WriteLine(snapshot.ToCsvRow());
+                }
+
+                string folder = Path.Combine(Application.persistentDataPath, "snapshots");
+                Directory.CreateDirectory(folder);
+                string name = "site_snapshot_" + now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture) + ".json";
+                File.WriteAllText(Path.Combine(folder, name), JsonUtility.ToJson(snapshot, true));
+                Debug.Log("[SitePlacement] snapshot written to " + path);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SitePlacement] could not write the snapshot: " + e.Message);
+                return false;
+            }
+        }
+
+        SiteSnapshot CurrentSnapshot(string trigger, DateTime timeUtc)
+        {
+            var bt = beam.transform;
+            return SiteSnapshot.Create(inputs, trigger, timeUtc, bt.position.x, bt.position.y, bt.position.z, bt.eulerAngles.y, savedUuid);
         }
 
         // ------------------------------------------------------------------ handle and label

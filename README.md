@@ -268,6 +268,33 @@ Runtime materials (arrows, supports, diagram lines, the ghost beam) copy templat
 `Assets/HoloMech/Resources/HoloMechMaterials/` (**HoloMech ▸ Build Runtime Materials**), so a player build keeps the
 URP Lit / Unlit shader variants they need.
 
+### On-site records
+
+In on-site mode the Quest app writes to its persistent data folder, `/sdcard/Android/data/<package>/files/`:
+
+| File | Written | What it is |
+|---|---|---|
+| `alignment_log.csv` | each two-point alignment | The touched points, for the registration-accuracy trials. Its format stays as it is. |
+| `site_snapshots.csv` | **Save snapshot** (`trigger = manual`), each two-point alignment (`align`), each **Save placement** (`anchor_save`) | One row per snapshot: dimensions, supports, loads, pose, anchor and result. |
+| `snapshots/site_snapshot_<UTC time>.json` | with each row | The complete inputs, for loading and solving again. |
+
+Copy them to the PC:
+
+```
+adb pull /sdcard/Android/data/<package>/files/ .
+```
+
+Reading `site_snapshots.csv`:
+
+- Units are in the column names; numbers use a decimal point in every locale. Columns of other section types are empty.
+- `preset` is the Workbench preset last pressed (`Gantry`, `Simple`, ...); adding, deleting or retyping a support makes it `Custom`.
+- `supports` is `kind@x_m`, `point_loads` is `P_N@x_m`, `udls` is `w_Npm@a_m-b_m`, each separated by semicolons. Loads have the
+  solver's sign (downward positive) and loads switched off are left out.
+- **The loads are simulated.** `sigma_max_MPa` and `v_max_mm` are the solution for those loads, not measurements. `v_max_mm` has
+  the solver's sign (upward positive). The four result columns are empty if the beam could not be solved.
+- `pos_x`, `pos_y`, `pos_z` and `yaw_deg` are the beam's left end in world coordinates and its angle about the vertical. The world
+  origin moves with each app start, so they are only comparable within one session; across sessions, use the anchor.
+
 ## Re-running the scene setup
 
 `BeamSceneSetup` sets the beam parameters, adds the components, sets the mass slider to 0–500 g, builds the live
