@@ -107,9 +107,10 @@ Editor tools (menu **ARBeam ▸ UI**), both re-runnable:
 | `Assets/ARBeam/Runtime/` | `ARBeam.Runtime` | MonoBehaviours: `BeamController`, `BeamLoadSource` (+ `SliderLoadSource`, `InspectorLoadSource`), `BeamMeshView`, `BeamDiagramGraphic`, `StressLegendLabel`, `SliderDrivenBeam`. |
 | `Assets/ARBeam/Editor/` | Assembly-CSharp-Editor | `BeamSceneSetup`: menu **ARBeam ▸ Set Up Beam Scenes** wires the three scenes. Idempotent. |
 | `Assets/ARBeam/Tests/EditMode/` | `ARBeam.Mechanics.Tests` | 105 NUnit tests (see below). |
-| `Assets/HoloMech/Model/` | `HoloMech.Model` (`noEngineReferences: true`) | `HoloMechInputs`: the HoloMech panels' values (cm, N, N/m, GPa, upward positive) and their conversion to an SI `BeamModel`. |
+| `Assets/HoloMech/Model/` | `HoloMech.Model` (`noEngineReferences: true`) | `HoloMechInputs`: the HoloMech panels' values (cm, N, N/m, GPa, upward positive) and their conversion to an SI `BeamModel`. `SiteAdjust`: the on-site card's mm steps. `SiteSnapshot`: a snapshot's CSV row and JSON. |
 | `Assets/HoloMech/View/` | `HoloMech.View` | Scene 4 view: `HoloMechBeamView` (grey reference beam, deflected beam coloured by \|w\|, supports, load arrows), `BeamMeshBuilder` (section extrusion, 240 stations), `DeformationPanel`, `UiKit` (themed controls from code); Mixed reality: `XRPresentation` (world-space board, LazyFollow pin); Quest window: `XRWindowLayout`, `FaceUserGrabTransformer`, `GrabHandleVisual`; demos: `DemoDriver`; Workbench layout: `WorkbenchLayout` (collapsible side panels, live re-solve, problem banner); Guided layout: `BeamInfoScreen` (Scene 2), `DimensionsPopup` (2.a–c, live cross-section preview), `LoadingScreen` (Scene 3), `ErrorPopup`; Scene 5: `StressProfileView` (3D V and M diagrams, section cut with shear arrow / moment arc / σ profile) and `StressPanel` (cut slider, colour bar and pointer, five switches); `HoloMechApp` is the state controller. |
-| `Assets/HoloMech/Tests/EditMode/` | `HoloMech.Tests` | 16 tests: unit and sign conversion, section outlines vs section properties. |
+| `Assets/HoloMech/Tests/EditMode/` | `HoloMech.Tests` | 57 tests: unit and sign conversion, section outlines vs section properties, on-site steps, Gantry preset, snapshots. |
+| `Assets/HoloMech/Tests/PlayMode/` | `HoloMech.PlayTests` | 2 tests that open the real scenes and press their buttons. |
 | `Assets/*.cs` | Assembly-CSharp | The original scripts. `CantileverBeam`, `OverhangBeam`, `BeamBend` are now thin subclasses of `SliderDrivenBeam`, kept so the scenes' slider events still resolve. `DiagramPopup` toggles the live panel. |
 | `Tools/SolverTests/` | — | .NET project that compiles the solver and its tests outside Unity. |
 
@@ -177,7 +178,7 @@ Put it on the beam object (or a child) and it is picked up automatically, or add
 
 ## Tests
 
-121 EditMode tests.
+162 EditMode tests and 2 PlayMode tests.
 
 `Assets/ARBeam/Tests/EditMode/` (105):
 
@@ -196,9 +197,15 @@ Put it on the beam object (or a child) and it is picked up automatically, or add
 - **SolverPropertyTests**: equilibrium, dM/dx = V and dv/dx = θ, support conditions, superposition, peak
   finding against dense sampling, diagram steps, input validation.
 
-`Assets/HoloMech/Tests/EditMode/` (16): cm/GPa → SI, "upward is positive" → solver sign, material buttons,
+`Assets/HoloMech/Tests/EditMode/` (57): cm/GPa → SI, "upward is positive" → solver sign, material buttons,
 section dimensions, unstable supports and bad loads reported before solving; extrusion outlines (box, I, pipe)
-have the same area and I as the section properties the solver uses; dependent section limits.
+have the same area and I as the section properties the solver uses; dependent section limits; on-site mm steps and
+the 1000 cm on-site limit; the Gantry preset and its support and trolley rows; snapshot CSV rows; the JSON round trip
+to the same σmax and vmax.
+
+`Assets/HoloMech/Tests/PlayMode/` (2): `WorkbenchListsPlayTest` (desktop scene; it waits for rendered frames, so run
+it from the Test Runner window, not under `-batchmode`) and `SiteCardPlayTest` (Quest scene, no headset needed: the
+on-site card's buttons, with the anchor buttons grey). Spatial anchors themselves can only be tested on a headset.
 
 Run them in **Window ▸ General ▸ Test Runner ▸ EditMode**, or without Unity:
 
@@ -268,20 +275,39 @@ Runtime materials (arrows, supports, diagram lines, the ghost beam) copy templat
 `Assets/HoloMech/Resources/HoloMechMaterials/` (**HoloMech ▸ Build Runtime Materials**), so a player build keeps the
 URP Lit / Unlit shader variants they need.
 
+### On-site overlay
+
+On the Quest, the **On-site Overlay (MR)** card in the Beam panel lays the beam onto a real member at true scale
+(`SitePlacement`). The colours show bending stress under simulated loads; the label above the beam says so.
+
+- **Place it:** grab the handle above the beam, or **Align by 2 points**, then nudge.
+- **Dimensions:** beam length and the current section's dimensions in mm, with − / + and a 1 mm, 5 mm or 1 cm step. On-site, the
+  length can reach 10 m; past the sliders' 5 m the Workbench slider stays at its end and the inputs hold the value. The section
+  type is still chosen in the Workbench.
+- **Gantry preset** (Workbench, Supports): I-beam, aluminium (E = 68.9 GPa), two pins at the ends, one point load (the trolley) at
+  midspan. Its values are placeholders until the gantry is measured. On-site it adds rows for the left support, right support
+  and trolley, so the beam can overhang its supports. Two-point alignment still means the ends of the beam, not the legs. The legs
+  and trolley are not drawn: the real ones are right there.
+- **Save placement** keeps the beam's place and inputs across app starts with one Meta spatial anchor; pressing it again replaces
+  the old one, and **Forget placement** erases it. Next time on-site mode is turned on, the beam goes back there, or the status says it
+  could not be found (another room, or the headset lost its space map) and the beam stays in front of the user. There are no
+  anchors in the Editor or over Link, so these buttons are grey there.
+
 ### On-site records
 
-In on-site mode the Quest app writes to its persistent data folder, `/sdcard/Android/data/<package>/files/`:
+In on-site mode the Quest app writes to its persistent data folder, `/sdcard/Android/data/com.unity.template.ar_mobile/files/`:
 
 | File | Written | What it is |
 |---|---|---|
 | `alignment_log.csv` | each two-point alignment | The touched points, for the registration-accuracy trials. Its format stays as it is. |
 | `site_snapshots.csv` | **Save snapshot** (`trigger = manual`), each two-point alignment (`align`), each **Save placement** (`anchor_save`) | One row per snapshot: dimensions, supports, loads, pose, anchor and result. |
 | `snapshots/site_snapshot_<UTC time>.json` | with each row | The complete inputs, for loading and solving again. |
+| `anchors.json` | **Save placement** | The saved anchor's UUID and the inputs at that moment, same format as the JSON above. |
 
 Copy them to the PC:
 
 ```
-adb pull /sdcard/Android/data/<package>/files/ .
+adb pull /sdcard/Android/data/com.unity.template.ar_mobile/files/ .
 ```
 
 Reading `site_snapshots.csv`:

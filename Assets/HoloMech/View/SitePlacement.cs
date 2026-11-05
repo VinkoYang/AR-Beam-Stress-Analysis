@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Threading.Tasks;
 using ARBeam;
 using TMPro;
 using UnityEngine;
@@ -25,6 +26,9 @@ namespace HoloMech
     /// The beam's origin is its left end, so a length change leaves the left end where it is, as the two-point alignment does.
     /// Under the Gantry preset, more rows move the two pins and the trolley: the real legs and trolley are in plain view, so
     /// only the beam, the support symbols and the load arrow are drawn (PI's decision, 2026-11-05).
+    ///
+    /// "Save placement" stores the beam's place across app starts in a Meta spatial anchor. The anchor is a separate object,
+    /// not the beam's parent, because the beam must stay free to be grabbed and nudged.
     ///
     /// The controls live on a card in the Workbench beam panel; <see cref="HoloMechApp"/> creates this component when
     /// it runs in the Quest window.
@@ -75,10 +79,19 @@ namespace HoloMech
 
         readonly List<SizeRow> sizeRows = new List<SizeRow>();
 
-        Button snapshotButton;
+        Button snapshotButton, savePlacementButton, forgetPlacementButton;
 
         /// <summary>The saved spatial anchor, written into the snapshots; empty when there is none.</summary>
         string savedUuid = "";
+        OVRSpatialAnchor savedAnchor;
+        bool anchorBusy, restoreTried;
+        const double LocalizeTimeoutSeconds = 10;
+        const string AnchorObjectName = "Beam Placement Anchor";
+
+        /// <summary>Spatial anchors need the headset itself: there are none in the Editor or in Play over Link.</summary>
+        static bool AnchorsAvailable => Application.platform == RuntimePlatform.Android;
+
+        static string AnchorsPath => Path.Combine(Application.persistentDataPath, "anchors.json");
 
         /// <summary>Where the controller touched the real beam: on its top surface, or (by eye) on its axis.</summary>
         bool touchTop = true;
@@ -107,6 +120,7 @@ namespace HoloMech
             if (window != null) window.Resetting += () => SetSiteMode(false);
             beam.Solved += _ => { if (siteMode) ApplyTrueScale(); };
             workbench.GantryApplied += () => SetStatus(WorkbenchLayout.GantryDefaultsNote + ".");
+            savedUuid = ReadSavedPlacement()?.anchorUuid ?? "";
             BuildCard(workbench.AddCard(true, "On-site Overlay (MR)"));
             BuildLabel();
         }
@@ -159,6 +173,21 @@ namespace HoloMech
                 if (WriteSnapshot(SiteSnapshot.TriggerManual)) SetStatus("Snapshot saved to site_snapshots.csv and snapshots/.");
                 else SetStatus("Could not write the snapshot. See the log.");
             });
+
+            savePlacementButton = UiKit.Button(t, c, "Save placement", "Save placement", t.captionSize + 2);
+            Height(savePlacementButton.gameObject, 52);
+            savePlacementButton.onClick.AddListener(SavePlacement);
+            forgetPlacementButton = UiKit.Button(t, c, "Forget placement", "Forget placement", t.captionSize + 2);
+            Height(forgetPlacementButton.gameObject, 52);
+            forgetPlacementButton.onClick.AddListener(ForgetPlacement);
+            if (!AnchorsAvailable)
+            {
+                var why = UiKit.Label(t, c, "Anchor Note", "Saving a placement needs the headset build: there are no spatial anchors in the Editor or over Link.",
+                    t.regular, t.captionSize, t.textSecondary, TextAlignmentOptions.TopLeft);
+                why.textWrappingMode = TextWrappingModes.Normal;
+                Height(why.gameObject, 50);
+            }
+
             Interactable();
         }
 
@@ -246,9 +275,9 @@ namespace HoloMech
 
             if (builtGantry)
             {
-                AddGantryRow("Left support x", () => SiteAdjust.GantrySupportMm(inputs, false), delta => SiteAdjust.StepGantrySupport(inputs, false, delta));
-                AddGantryRow("Right support x", () => SiteAdjust.GantrySupportMm(inputs, true), delta => SiteAdjust.StepGantrySupport(inputs, true, delta));
-                AddGantryRow("Trolley x", () => SiteAdjust.TrolleyMm(inputs), delta => SiteAdjust.StepTrolley(inputs, delta));
+                AddGantryRow("Left support", () => SiteAdjust.GantrySupportMm(inputs, false), delta => SiteAdjust.StepGantrySupport(inputs, false, delta));
+                AddGantryRow("Right support", () => SiteAdjust.GantrySupportMm(inputs, true), delta => SiteAdjust.StepGantrySupport(inputs, true, delta));
+                AddGantryRow("Trolley", () => SiteAdjust.TrolleyMm(inputs), delta => SiteAdjust.StepTrolley(inputs, delta));
             }
 
             RefreshSizeRows();
@@ -303,8 +332,21 @@ namespace HoloMech
 
         void Interactable()
         {
-            if (alignButton != null) alignButton.interactable = siteMode;
-            if (snapshotButton != null) snapshotButton.interactable = siteMode;
+            SetUsable(alignButton, siteMode);
+            SetUsable(snapshotButton, siteMode);
+            bool anchors = siteMode && AnchorsAvailable && !anchorBusy;
+            SetUsable(savePlacementButton, anchors);
+            SetUsable(forgetPlacementButton, anchors && savedUuid != "");
+        }
+
+        /// <summary>Meta's button prefab looks the same when not interactable, so an unusable button is dimmed as well.</summary>
+        static void SetUsable(Button button, bool usable)
+        {
+            if (button == null) return;
+            button.interactable = usable;
+            var group = button.GetComponent<CanvasGroup>();
+            if (group == null) group = button.gameObject.AddComponent<CanvasGroup>();
+            group.alpha = usable ? 1f : 0.4f;
         }
 
         void SetStatus(string text)
@@ -348,6 +390,7 @@ namespace HoloMech
                 beam.ColorMode = BeamColorMode.BendingStress;
                 ApplyTrueScale();
                 SetStatus("Grab the handle above the beam to move it, or use Align by 2 points.");
+                if (AnchorsAvailable && !restoreTried) RestorePlacement();
             }
             else
             {
@@ -532,6 +575,187 @@ namespace HoloMech
         {
             var bt = beam.transform;
             return SiteSnapshot.Create(inputs, trigger, timeUtc, bt.position.x, bt.position.y, bt.position.z, bt.eulerAngles.y, savedUuid);
+        }
+
+        // ------------------------------------------------------------------ spatial anchor
+
+        void SetAnchorBusy(bool busy)
+        {
+            anchorBusy = busy;
+            if (this) Interactable();
+        }
+
+        /// <summary>anchors.json: the saved anchor's UUID and the inputs at that moment, in the snapshot format.</summary>
+        static SiteSnapshot ReadSavedPlacement()
+        {
+            try
+            {
+                if (!File.Exists(AnchorsPath)) return null;
+                var saved = JsonUtility.FromJson<SiteSnapshot>(File.ReadAllText(AnchorsPath));
+                return saved != null && saved.inputs != null ? saved : null;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SitePlacement] could not read the saved placement: " + e.Message);
+                return null;
+            }
+        }
+
+        static void DeleteSavedPlacement()
+        {
+            if (File.Exists(AnchorsPath)) File.Delete(AnchorsPath);
+        }
+
+        /// <summary>Erases the saved anchor from the headset. Returns false if the headset could not do it.</summary>
+        async Task<bool> EraseSavedAnchor()
+        {
+            if (savedUuid == "") return true;
+            bool erased;
+            if (savedAnchor != null)
+            {
+                erased = (await savedAnchor.EraseAnchorAsync()).Success;
+                Destroy(savedAnchor.gameObject);
+                savedAnchor = null;
+            }
+            else
+            {
+                // Saved in an earlier session and not found in this one, so there is no object to erase it through.
+                erased = Guid.TryParse(savedUuid, out var uuid) &&
+                         (await OVRSpatialAnchor.EraseAnchorsAsync(Array.Empty<OVRSpatialAnchor>(), new[] { uuid })).Success;
+            }
+
+            savedUuid = "";
+            if (!erased) Debug.LogWarning("[SitePlacement] the saved anchor could not be erased.");
+            return erased;
+        }
+
+        /// <summary>Anchors the beam's left end and direction, replacing the saved placement; only one is kept.</summary>
+        async void SavePlacement()
+        {
+            if (!siteMode || anchorBusy || !AnchorsAvailable) return;
+            SetAnchorBusy(true);
+            SetStatus("Saving placement...");
+            GameObject go = null;
+            try
+            {
+                bool erased = await EraseSavedAnchor();
+                DeleteSavedPlacement();
+
+                go = new GameObject(AnchorObjectName);
+                go.transform.SetPositionAndRotation(beam.transform.position, beam.transform.rotation);
+                var anchor = go.AddComponent<OVRSpatialAnchor>();
+                if (!await anchor.WhenLocalizedAsync())
+                {
+                    Destroy(go);
+                    SetStatus("Could not create the anchor: the headset has not located the room. Look around and try again.");
+                    return;
+                }
+
+                var saved = await anchor.SaveAnchorAsync();
+                if (!saved.Success)
+                {
+                    Debug.LogWarning("[SitePlacement] could not save the anchor: " + saved.Status);
+                    Destroy(go);
+                    SetStatus($"Could not save the anchor ({saved.Status}). Nothing is saved now.");
+                    return;
+                }
+
+                savedAnchor = anchor;
+                savedUuid = anchor.Uuid.ToString();
+                File.WriteAllText(AnchorsPath, JsonUtility.ToJson(CurrentSnapshot(SiteSnapshot.TriggerAnchorSave, DateTime.UtcNow), true));
+                WriteSnapshot(SiteSnapshot.TriggerAnchorSave);
+                SetStatus("Placement saved: the beam returns here at the next start." + (erased ? "" : " The old anchor could not be erased."));
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SitePlacement] could not save the placement: " + e);
+                if (go != null && savedAnchor == null) Destroy(go);
+                SetStatus("Could not save the placement. See the log.");
+            }
+            finally
+            {
+                SetAnchorBusy(false);
+            }
+        }
+
+        /// <summary>First entry into on-site mode: back to the saved place and inputs, or say why not. The beam stays in front of the user then.</summary>
+        async void RestorePlacement()
+        {
+            restoreTried = true;
+            var saved = ReadSavedPlacement();
+            if (saved == null || !Guid.TryParse(saved.anchorUuid, out var uuid)) return;
+
+            const string notFound = "Could not find the saved placement (another room, or the headset lost its space map). " +
+                                    "The beam is in front of you; Save placement replaces the old one.";
+            SetAnchorBusy(true);
+            SetStatus("Looking for the saved placement...");
+            try
+            {
+                var list = new List<OVRSpatialAnchor.UnboundAnchor>();
+                var loaded = await OVRSpatialAnchor.LoadUnboundAnchorsAsync(new[] { uuid }, list);
+                if (!loaded.Success || list.Count == 0)
+                {
+                    SetStatus(notFound);
+                    return;
+                }
+
+                var unbound = list[0];
+                bool located = await unbound.LocalizeAsync(LocalizeTimeoutSeconds);
+                if (!siteMode)
+                {
+                    restoreTried = false; // left on-site mode meanwhile: try again next time
+                    return;
+                }
+
+                if (!located || !unbound.TryGetPose(out var pose))
+                {
+                    SetStatus(notFound);
+                    return;
+                }
+
+                // Bound in the frame it is created, or the component would make a new anchor of its own.
+                var go = new GameObject(AnchorObjectName);
+                savedAnchor = go.AddComponent<OVRSpatialAnchor>();
+                unbound.BindTo(savedAnchor);
+
+                var forward = Vector3.ProjectOnPlane(pose.rotation * Vector3.forward, Vector3.up);
+                beam.transform.rotation = Quaternion.LookRotation(forward.sqrMagnitude > 1e-6f ? forward.normalized : Vector3.forward, Vector3.up);
+                beam.transform.position = pose.position;
+                placedOnce = true;
+                inputs.CopyFrom(saved.inputs);
+                InputsEdited();
+                SetStatus("Restored saved placement");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SitePlacement] could not restore the placement: " + e);
+                SetStatus(notFound);
+            }
+            finally
+            {
+                SetAnchorBusy(false);
+            }
+        }
+
+        async void ForgetPlacement()
+        {
+            if (!siteMode || anchorBusy || !AnchorsAvailable) return;
+            SetAnchorBusy(true);
+            try
+            {
+                bool erased = await EraseSavedAnchor();
+                DeleteSavedPlacement();
+                SetStatus(erased ? "Saved placement forgotten." : "Saved placement forgotten here, but the headset could not erase the anchor.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SitePlacement] could not forget the placement: " + e);
+                SetStatus("Could not forget the placement. See the log.");
+            }
+            finally
+            {
+                SetAnchorBusy(false);
+            }
         }
 
         // ------------------------------------------------------------------ handle and label

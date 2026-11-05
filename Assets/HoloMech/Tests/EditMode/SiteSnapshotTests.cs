@@ -191,6 +191,41 @@ namespace HoloMech.Tests
         }
 
         [Test]
+        public void SavedPlacementRestoresIntoTheInputsThePanelsHold()
+        {
+            // anchors.json is a snapshot; a restore copies its inputs into the object the Workbench already holds.
+            var saved = Gantry();
+            string json = JsonUtility.ToJson(Snapshot(saved, SiteSnapshot.TriggerAnchorSave, "uuid-2"));
+
+            var live = new HoloMechInputs();
+            var pointLoads = live.pointLoads;
+            live.CopyFrom(JsonUtility.FromJson<SiteSnapshot>(json).inputs);
+
+            Assert.That(live.IsGantry, Is.True);
+            Assert.That(live.lengthCm, Is.EqualTo(300f));
+            Assert.That(live.section, Is.EqualTo(SectionType.IBeam));
+            Assert.That(live.pointLoads, Is.Not.SameAs(pointLoads));
+            Assert.That(SiteAdjust.GantrySupportMm(live, true), Is.EqualTo(2800f).Within(1e-3f));
+            Assert.That(live.TrySolve(out var a, out var error), Is.True, error);
+            Assert.That(saved.TrySolve(out var b, out error), Is.True, error);
+            Assert.That(a.MaxBendingStress, Is.EqualTo(b.MaxBendingStress));
+        }
+
+        [Test]
+        public void CopyFromDoesNotShareLists()
+        {
+            var source = Gantry();
+            var live = new HoloMechInputs();
+            live.CopyFrom(source);
+            source.supports.Clear();
+            source.pointLoads[0].forceN = 1f;
+            source.iBeam.heightCm = 7f;
+            Assert.That(live.supports.Count, Is.EqualTo(2));
+            Assert.That(live.pointLoads[0].forceN, Is.EqualTo(1000f));
+            Assert.That(live.iBeam.heightCm, Is.EqualTo(32.5f));
+        }
+
+        [Test]
         public void JsonKeepsEmptyLoadLists()
         {
             var i = new HoloMechInputs();

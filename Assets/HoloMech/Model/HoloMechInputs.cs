@@ -459,5 +459,22 @@ namespace HoloMech
             c.supports = supports.ConvertAll(x => x.Clone());
             return c;
         }
+
+        /// <summary>Takes over all values in place, for the panels that hold on to this object (restoring a saved placement).</summary>
+        public void CopyFrom(HoloMechInputs other)
+        {
+            var c = other.Clone();
+            section = c.section;
+            pipe = c.pipe;
+            box = c.box;
+            iBeam = c.iBeam;
+            supports = c.supports;
+            preset = c.preset;
+            lengthCm = c.lengthCm;
+            material = c.material;
+            elasticModulusGPa = c.elasticModulusGPa;
+            pointLoads = c.pointLoads;
+            uniformLoads = c.uniformLoads;
+        }
     }
 }

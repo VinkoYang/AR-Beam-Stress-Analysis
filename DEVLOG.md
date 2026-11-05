@@ -2,6 +2,58 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-11-05 — On-site dimensions, Gantry preset, snapshots, spatial anchor (F1–F4)
+
+From the design note `01_plan/现场尺寸调整 + 龙门吊预设 + 导出 设计_v01.md`. Built on the second office machine (Unity 6000.5.3f1
+with Android Build Support, checked first). PI's decisions, 2026-11-05: development and Quest testing on this machine; the gantry's
+two pins move independently of the beam length; the placement persists across starts with a spatial anchor; no legs or trolley are
+drawn, because the real ones are in plain view and a drawing would hide them.
+
+- **F1 Dimensions rows** (`SiteAdjust`, `SitePlacement`): beam length and the current section's dimensions, in mm with − / + and a
+  1 mm, 5 mm or 1 cm step. `SiteLengthMaxCm = 1000` applies on-site only (rows and two-point alignment); `LengthMaxCm` stays 500 for the
+  sliders and the Guided flow. Past 500 cm the Workbench slider sits at its end and the inputs hold the value.
+- **F2 Gantry preset**: I-beam, aluminium, two pins at the ends, one point load (the trolley) at midspan, plus on-site rows for the
+  left support, right support and trolley on the existing lists.
+- **F3 Snapshots** (`SiteSnapshot`): `site_snapshots.csv` plus a JSON file per row, on the Save snapshot button, each two-point
+  alignment and each Save placement. `alignment_log.csv` is unchanged.
+- **F4 Spatial anchor**: Save placement / Forget placement, `anchors.json`, restore on the first entry into on-site mode.
+  `anchorSupport: 1` set through `OVRProjectConfig`, and `USE_ANCHOR_API` added to the manifest by Meta's `OVRManifestPreprocessor`.
+
+### Decisions
+
+| Question | Decision | Why |
+|---|---|---|
+| Gantry defaults | Length and section keep their current values; the trolley gets the 1000 N that "Add point load" uses | The gantry has not been measured (T257). No new number that could be read as a measured value; the note says to set them. |
+| `MaterialPreset.Aluminum` | Enum value after Custom, button before it | `HoloMechXR` and `HoloMechQuest` store `material: 3` (Custom). Inserting it before Custom would have turned their default into aluminium. |
+| E label | One decimal in the Workbench and Guided | 68.9 GPa read as 69. |
+| Support row vs slider | The row uses exact positions; the slider still snaps to the end within 5 mm | With the snap, a 1 mm step off the right end would have jumped straight back. |
+| Supports crossing | Rows stop 1 cm apart (`MinSupportGapCm`, also used by `Validate`) | That is the gap below which the supports count as coincident. |
+| Load sign in the CSV | The solver's: downward positive | The trolley reads as a positive number, and the same convention as the solver code. The JSON keeps the panel's magnitude and direction. |
+| Anchor erase fails | Carry on and say so | A lost anchor can never be erased; refusing would leave the user stuck with it. |
+| Restore fails | The saved placement is kept | The user may simply be in another room. Forget placement clears it. |
+| Manifest | Kept only the anchor permission | Meta's tool also dropped `quest` from `supportedDevices`; unrelated, so put back. |
+
+### Checked
+
+- EditMode: 162 pass (129 before; 33 new: `SiteAdjustTests`, `GantryPresetTests`, `SiteSnapshotTests`, including the JSON round trip to
+  the same σmax and vmax for all three section types).
+- PlayMode: 2 pass. New `SiteCardPlayTest` opens the Quest scene and presses the card's buttons (Gantry, rows, left end stays, past the
+  slider's limit, Save snapshot, anchor buttons grey). `WorkbenchListsPlayTest` still passes.
+- Layout looked at in close-up renders of the Quest panel: rows, five presets and five material buttons fit. This found that Meta's
+  button prefab looks the same when not interactable, so unusable card buttons are now dimmed too.
+- `QuestBuild.Build` succeeds; `aapt dump permissions` on the APK lists `USE_ANCHOR_API`.
+- Not on a headset: no headset was connected. **Nothing about the anchors themselves has run yet**: Save, Erase, Load and Localize compile
+  against SDK 207.0.1 and are grey in the Editor, and that is all that is known.
+
+### Open
+
+- **Headset pass (Quest 3S), not done:** Gantry → set dimensions → two-point alignment → Save snapshot → Save placement → quit the app →
+  reopen → beam back in place with its dimensions → Forget placement. `adb pull` the CSV and JSON and check the columns. Record the
+  result here.
+- The Gantry note stays on while the preset is active, also after the real values have been entered.
+- A snapshot's JSON is ready to be loaded and solved again, but no button in the app does that yet; only `anchors.json` is loaded.
+- Measure the gantry (T257).
+
 ## 2026-10-28 — Several loads and supports; on-site overlay at true scale (MSEC 2027)
 
 PI's request for an MSEC 2027 brief paper: (1) several point loads and several uniform loads, added and deleted from
