@@ -29,6 +29,10 @@ namespace HoloMech
     public static class HoloMechRanges
     {
         public const float LengthMinCm = 50f, LengthMaxCm = 500f;
+
+        /// <summary>Upper length limit in on-site mode only (a gantry can be longer than 5 m); the sliders stay at <see cref="LengthMaxCm"/>.</summary>
+        public const float SiteLengthMaxCm = 1000f;
+
         public const float ModulusMinGPa = 1f, ModulusMaxGPa = 250f;
         public const float ForceMaxN = 10000f;
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using ARBeam;
@@ -19,6 +20,9 @@ namespace HoloMech
     ///    then the right end. The beam's left end goes to the first point, its axis to the line between the points,
     ///    and (optionally) its length to the distance between them.
     /// 3. Nudge buttons move the beam along its axis, up/down and sideways, and turn it, by a chosen step.
+    ///
+    /// The "Dimensions" rows (PI's request, 2026-11-05) set the beam length and section to the measured member in mm steps.
+    /// The beam's origin is its left end, so a length change leaves the left end where it is, as the two-point alignment does.
     ///
     /// The controls live on a card in the Workbench beam panel; <see cref="HoloMechApp"/> creates this component when
     /// it runs in the Quest window.
@@ -53,6 +57,20 @@ namespace HoloMech
 
         float stepMetres = 0.01f;
         const float StepDegrees = 0.5f;
+
+        float sizeStepMm = 1f;
+        RectTransform sizeHost;
+        SectionType builtSection;
+
+        /// <summary>A "Dimensions" row's value label; refreshed when the value changes (also from the Workbench sliders).</summary>
+        class SizeRow
+        {
+            public TMP_Text value;
+            public Func<float> mm;
+            public float shown = float.NaN;
+        }
+
+        readonly List<SizeRow> sizeRows = new List<SizeRow>();
 
         /// <summary>Where the controller touched the real beam: on its top surface, or (by eye) on its axis.</summary>
         bool touchTop = true;
@@ -94,7 +112,7 @@ namespace HoloMech
 
             status = UiKit.Label(t, c, "Status", "", t.regular, t.captionSize, t.textSecondary, TextAlignmentOptions.TopLeft);
             status.textWrappingMode = TextWrappingModes.Normal;
-            Height(status.gameObject, 64);
+            Height(status.gameObject, 88);
             SetStatus("Turn on to lay the beam onto a real member at true size. Loads stay simulated.");
 
             alignButton = UiKit.Button(t, c, "Align by 2 points", "Align by 2 points", t.captionSize + 2);
@@ -111,6 +129,18 @@ namespace HoloMech
             Nudge(c, "Up / down", v => Move(Vector3.up * v));
             Nudge(c, "Sideways", v => Move(beam.transform.forward * v));
             Nudge(c, "Turn (0.5°)", v => Turn(Mathf.Sign(v) * StepDegrees));
+
+            var dims = UiKit.Label(t, c, "Dimensions", "Dimensions", t.semiBold, t.captionSize + 2, t.textPrimary, TextAlignmentOptions.BottomLeft);
+            Height(dims.gameObject, 44);
+            Choice(c, "Size step", new[] { "1 mm", "5 mm", "1 cm" }, 0, i => sizeStepMm = i == 0 ? 1f : i == 1 ? 5f : 10f);
+            sizeHost = UiKit.Rect("Dimension Rows", c);
+            var v = sizeHost.gameObject.AddComponent<VerticalLayoutGroup>();
+            v.spacing = 4;
+            v.childControlHeight = true;
+            v.childControlWidth = true;
+            v.childForceExpandHeight = false;
+            v.childForceExpandWidth = true;
+            BuildSizeRows();
             Interactable();
         }
 
@@ -147,12 +177,91 @@ namespace HoloMech
             Height(row.gameObject, 48);
             var l = UiKit.Label(t, row, "Caption", caption, t.medium, t.captionSize + 2, t.textPrimary, TextAlignmentOptions.MidlineLeft);
             l.rectTransform.Stretch(Vector2.zero, new Vector2(-240, 0));
+            PlusMinus(row, minus, plus, () => act(-stepMetres), () => act(stepMetres));
+        }
+
+        void PlusMinus(RectTransform row, string minus, string plus, Action onMinus, Action onPlus)
+        {
             var down = UiKit.Button(t, row, "Minus", minus, t.labelSize);
             down.GetComponent<RectTransform>().Place(new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-122, 0), new Vector2(114, 46));
             var up = UiKit.Button(t, row, "Plus", plus, t.labelSize);
             up.GetComponent<RectTransform>().Place(new Vector2(1, 0.5f), new Vector2(1, 0.5f), Vector2.zero, new Vector2(114, 46));
-            down.onClick.AddListener(() => { if (siteMode) act(-stepMetres); });
-            up.onClick.AddListener(() => { if (siteMode) act(stepMetres); });
+            down.onClick.AddListener(() => { if (siteMode) onMinus(); });
+            up.onClick.AddListener(() => { if (siteMode) onPlus(); });
+        }
+
+        /// <summary>Caption, the current value in mm and a − / + pair; the action gets ± the size step.</summary>
+        void AddSizeRow(string caption, Func<float> mm, Action<float> step)
+        {
+            var row = UiKit.Rect(caption, sizeHost);
+            Height(row.gameObject, 48);
+            var l = UiKit.Label(t, row, "Caption", caption, t.medium, t.captionSize + 2, t.textPrimary, TextAlignmentOptions.MidlineLeft);
+            l.rectTransform.Stretch(Vector2.zero, new Vector2(-240, 0));
+            var value = UiKit.Label(t, row, "Value", "", t.semiBold, t.captionSize + 2, t.textPrimary, TextAlignmentOptions.MidlineRight);
+            value.rectTransform.Stretch(Vector2.zero, new Vector2(-250, 0));
+            PlusMinus(row, "−", "+", () => step(-sizeStepMm), () => step(sizeStepMm));
+            sizeRows.Add(new SizeRow { value = value, mm = mm });
+        }
+
+        /// <summary>One row per length of the current section type (the type itself is still chosen in the Workbench).</summary>
+        void BuildSizeRows()
+        {
+            for (int i = sizeHost.childCount - 1; i >= 0; i--)
+            {
+                var child = sizeHost.GetChild(i);
+                child.SetParent(null);
+                Destroy(child.gameObject);
+            }
+
+            sizeRows.Clear();
+            builtSection = inputs.section;
+            foreach (var d in SiteAdjust.For(inputs.section))
+                AddSizeRow(SiteAdjust.Caption(d), () => SiteAdjust.ValueMm(inputs, d), delta => StepDimension(d, delta));
+            RefreshSizeRows();
+            LayoutRebuilder.MarkLayoutForRebuild(sizeHost);
+        }
+
+        void RefreshSizeRows()
+        {
+            if (inputs.section != builtSection)
+            {
+                BuildSizeRows();
+                return;
+            }
+
+            foreach (var row in sizeRows)
+            {
+                float mm = row.mm();
+                if (mm == row.shown) continue;
+                row.shown = mm;
+                row.value.text = mm.ToString("F1", CultureInfo.InvariantCulture) + " mm";
+            }
+        }
+
+        void StepDimension(SiteDimension d, float deltaMm)
+        {
+            var result = SiteAdjust.Step(inputs, d, deltaMm);
+            InputsEdited();
+            string value = $"{SiteAdjust.Caption(d)} = {SiteAdjust.ValueMm(inputs, d):0.0} mm";
+            switch (result)
+            {
+                case SiteStepResult.AtLimit:
+                    SetStatus($"{value}: the end of its range.");
+                    break;
+                case SiteStepResult.SectionLimited:
+                    SetStatus($"{value}. Section limit applied: web no wider than the flange, flange under half the height, pipe wall at most D/2.");
+                    break;
+                default:
+                    SetStatus(value + ".");
+                    break;
+            }
+        }
+
+        /// <summary>The inputs changed here: update the Workbench controls and re-solve.</summary>
+        void InputsEdited()
+        {
+            workbench.Sync();
+            changed?.Invoke();
         }
 
         void Interactable()
@@ -306,10 +415,9 @@ namespace HoloMech
             string lengthNote = "";
             if (spanSetsLength)
             {
-                float cm = Mathf.Clamp(Mathf.Round(span * 100f), HoloMechRanges.LengthMinCm, HoloMechRanges.LengthMaxCm);
+                float cm = Mathf.Clamp(Mathf.Round(span * 100f), HoloMechRanges.LengthMinCm, HoloMechRanges.SiteLengthMaxCm);
                 inputs.SetLength(cm);
-                workbench.Sync();
-                changed?.Invoke();
+                InputsEdited();
                 lengthNote = $" Beam length set to {cm:0} cm.";
             }
 
@@ -348,6 +456,7 @@ namespace HoloMech
 
         void LateUpdate()
         {
+            RefreshSizeRows();
             if (!siteMode) return;
             var bt = beam.transform;
             float halfH = (float)SectionProfile.For(inputs, 16).Height / 2f;
