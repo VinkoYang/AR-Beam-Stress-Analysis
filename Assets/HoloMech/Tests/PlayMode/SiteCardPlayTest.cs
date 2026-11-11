@@ -94,8 +94,11 @@ namespace HoloMech.Tests
             Assert.That(inputs.IsGantry, Is.True);
             Assert.That(inputs.elasticModulusGPa, Is.EqualTo(68.9f).Within(1e-4f));
             Assert.That(Text("Elastic Module (GPa)/Value").text, Is.EqualTo("68.9"));
-            Assert.That(Text("Gantry Note").text, Does.Contain("measured gantry (T257)"));
-            Assert.That(Text(Card + "Status").text, Does.Contain("measured gantry (T257)"));
+            Assert.That(Text("Gantry Note").text, Does.Contain("Lab gantry 2026-11-06"));
+            Assert.That(Text(Card + "Status").text, Does.Contain("Lab gantry 2026-11-06"));
+            Assert.That(inputs.lengthCm, Is.EqualTo(HoloMechInputs.LabGantryLengthCm), "measured girder length");
+            Assert.That(inputs.iBeam.heightCm, Is.EqualTo(13f));
+            Assert.That(inputs.iBeam.flangeWidthCm, Is.EqualTo(8f));
             Assert.That(Row("Height h", "Plus"), Is.Not.Null, "the rows followed the section to the I-beam");
             Assert.That(Row("Web thick. tw", "Plus"), Is.Not.Null);
             Assert.That(Row("Outer diam. D", "Plus"), Is.Null);
@@ -105,7 +108,7 @@ namespace HoloMech.Tests
 
             // Outside on-site mode the rows do nothing.
             Row("Beam length", "Plus").onClick.Invoke();
-            Assert.That(inputs.lengthCm, Is.EqualTo(200f));
+            Assert.That(inputs.lengthCm, Is.EqualTo(241f));
 
             site.SetSiteMode(true);
             yield return Frames();
@@ -119,21 +122,21 @@ namespace HoloMech.Tests
             Row("Beam length", "Plus").onClick.Invoke();
             Row("Beam length", "Plus").onClick.Invoke();
             yield return Frames();
-            Assert.That(inputs.lengthCm, Is.EqualTo(200.2f).Within(1e-3f));
-            Assert.That(Value("Beam length"), Is.EqualTo("2002.0 mm"));
+            Assert.That(inputs.lengthCm, Is.EqualTo(241.2f).Within(1e-3f));
+            Assert.That(Value("Beam length"), Is.EqualTo("2412.0 mm"));
             Assert.That(view.transform.position, Is.EqualTo(leftEnd), "left end");
-            Assert.That(view.Solution.Model.Length, Is.EqualTo(2.002).Within(1e-5));
+            Assert.That(view.Solution.Model.Length, Is.EqualTo(2.412).Within(1e-5));
             Assert.That(view.transform.localScale.x, Is.EqualTo(view.TrueScale).Within(1e-5f));
 
-            // One millimetre off the right end, in spite of the slider's 5 mm snap.
+            // 1 mm steps move the pins (at the legs' inner faces, 215.5 mm from each end) and the trolley (at 1205 mm).
             Row("Right support", "Minus").onClick.Invoke();
             Row("Left support", "Plus").onClick.Invoke();
             Row("Trolley", "Plus").onClick.Invoke();
             yield return Frames();
-            Assert.That(Value("Right support"), Is.EqualTo("2001.0 mm"));
-            Assert.That(Value("Left support"), Is.EqualTo("1.0 mm"));
-            Assert.That(Value("Trolley"), Is.EqualTo("1001.0 mm"));
-            Assert.That(view.Solution.Reactions[1].Position, Is.EqualTo(2.001).Within(1e-5));
+            Assert.That(Value("Right support"), Is.EqualTo("2193.5 mm"));
+            Assert.That(Value("Left support"), Is.EqualTo("216.5 mm"));
+            Assert.That(Value("Trolley"), Is.EqualTo("1206.0 mm"));
+            Assert.That(view.Solution.Reactions[1].Position, Is.EqualTo(2.1935).Within(1e-5));
 
             // Past the slider's limit: it shows its end, the inputs and the row keep the value.
             inputs.SetLength(499.95f);

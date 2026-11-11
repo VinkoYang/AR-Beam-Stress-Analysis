@@ -2,6 +2,48 @@
 
 Newest first. Each entry records what changed, why, how it was checked, and what is still open.
 
+## 2026-11-11 — Thumbstick while grabbing, locomotion off, lab gantry defaults, "Bottom surface" touch
+
+Built on Cherry 2628 (LU-96NNWB4), which has Unity 6000.5.3f1 with Android Build Support. Local `main` was 4 commits behind
+`origin/main` (F1–F4 were made on the other machine); fast-forwarded, the 7 uncommitted asset / ProjectSettings changes on this
+machine kept as they were (PI's decision) and not part of this commit.
+
+- **Thumbstick while grabbing** (`GrabStick`, used by `FaceUserGrabTransformer` and `LevelGrabTransformer`): with the trigger (ray
+  grab) or grip (hand grab) held, stick forward / back pushes the object away / pulls it closer along the line from the head, and
+  stick left / right turns it about the vertical. Dead zone 0.15, then quadratic, so small deflections are fine control; full
+  deflection = 1 m/s and 60°/s. Distance from the head stays in 0.25–10 m, and the push is not wound up while held against a limit.
+  The more deflected of the two sticks is used, so either hand works. Window and panels: the turn is added on top of facing the user
+  and is kept after release (read back from the pose at the next grab). On-site beam: the push is horizontal, so the beam keeps its
+  height, and the turn is about the vertical through the grab point.
+- **Locomotion off** (`LocomotionOff`, runs after every scene load): the Interactions Rig's teleport (stick forward) and turning
+  (stick left / right) were still live, because `_velocityDisabled` only stops sliding and gravity. In passthrough a snap turn or
+  teleport moves every virtual object against the room and breaks an on-site alignment. All `LocomotionEventsConnection`,
+  `TeleportInteractor`, `LocomotionTurnerInteractor` and `LocomotionAxisTurnerInteractor` components are disabled.
+- **Lab gantry defaults** (`HoloMechInputs.ApplyLabGantryDimensions`, called by the Workbench "Gantry" button): the 2026-11-06 student
+  measurements of the Lucas ME lab gantry, girder 94.9 in = 241.0 cm end to end, 77.9 in = 197.9 cm clear between the legs, section
+  h = 13 cm, bf = 8 cm. The old preset put both pins at the beam ends; the girder overhangs the legs, so the pins now go to the legs'
+  inner faces, 21.55 cm from each end. The pin centres, tf and tw are not measured yet and still have to be set on site (the note says
+  so). `ApplyGantryPreset` itself is unchanged.
+- **"Bottom surface" touch** (`SitePlacement`): Touched = Top surface / Bottom surface / Axis. The girder underside (2.43 m above the
+  floor) is the face that can be reached from a ladder and seen from below. Origin = touched point + h/2 up.
+  `alignment_log.csv` column `touched_top` (1/0) became `touched` (top / bottom / axis); a log with the old header is renamed to
+  `alignment_log_old_<UTC time>.csv` before the first new row.
+
+### Checks
+
+- EditMode 168 / 168 pass (new: `GrabStickTests` 5, `LabGantryUsesTheMeasuredLengthAndSectionWithPinsAtTheLegs`); the EditMode test
+  assembly now references `HoloMech.View`.
+- PlayMode: `SiteCardPlayTest` updated to the new defaults (length 241 cm, pins at 215.5 / 2194.5 mm, trolley at 1205 mm). **Not run:** batch-mode PlayMode hung again after both tests while OpenXR looked for a
+  headset (see 2026-10-28 Open), so no result file; run both from the Test Runner window on the other machine.
+
+### Open
+
+- Headset pass of the thumbstick, the locomotion switch-off and Bottom surface. Not deployed from this machine: the Quest 3S stays
+  `unauthorized` here (no "Allow USB debugging" prompt appears, Meta Horizon Link and MQDH were running); build and install from the
+  other machine.
+- No APK was built on this machine for this commit.
+- Pin centres, tf, tw of the gantry from the next site visit; then set them as the defaults.
+
 ## 2026-11-05 — On-site dimensions, Gantry preset, snapshots, spatial anchor (F1–F4)
 
 From the design note `01_plan/现场尺寸调整 + 龙门吊预设 + 导出 设计_v01.md`. Built on the second office machine (Unity 6000.5.3f1

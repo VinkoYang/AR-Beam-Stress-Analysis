@@ -286,6 +286,31 @@ namespace HoloMech
             preset = SupportPreset.Gantry;
         }
 
+        /// <summary>
+        /// The Lucas ME lab gantry as measured by students on 2026-11-06 (project folder 04_data/raw/2026-11-06 Lucas
+        /// gantry): girder 94.9 in = 241.0 cm end to end, 77.9 in = 197.9 cm clear between the legs, section 13 × 8 cm.
+        /// </summary>
+        public const float LabGantryLengthCm = 241.0f, LabGantryClearCm = 197.9f, LabGantryHeightCm = 13f, LabGantryFlangeWidthCm = 8f;
+
+        /// <summary>
+        /// <see cref="ApplyGantryPreset"/> with the lab gantry's measured length and section. The pin centres, the flange
+        /// and the web thickness were not measured: the pins go to the inner faces of the legs, 21.6 cm from each end,
+        /// and tf, tw keep their current values. Those three still have to be set on site.
+        /// </summary>
+        public void ApplyLabGantryDimensions()
+        {
+            ApplyGantryPreset();
+            SetLength(LabGantryLengthCm);
+            iBeam.heightCm = LabGantryHeightCm;
+            iBeam.flangeWidthCm = LabGantryFlangeWidthCm;
+            ClampSectionDimensions();
+            float inset = (LabGantryLengthCm - LabGantryClearCm) / 2f;
+            supports[0].positionCm = inset;
+            supports[1].atRightEnd = false;
+            supports[1].positionCm = LabGantryLengthCm - inset;
+            pointLoads[0].positionCm = LabGantryLengthCm / 2f;
+        }
+
         /// <summary>True while the two supports and the trolley load of the Gantry preset are there to adjust.</summary>
         public bool IsGantry => preset == SupportPreset.Gantry && supports.Count == 2 && pointLoads.Count >= 1;
 

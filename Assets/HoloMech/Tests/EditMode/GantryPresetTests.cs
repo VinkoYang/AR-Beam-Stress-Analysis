@@ -142,6 +142,28 @@ namespace HoloMech.Tests
         }
 
         [Test]
+        public void LabGantryUsesTheMeasuredLengthAndSectionWithPinsAtTheLegs()
+        {
+            var i = new HoloMechInputs { lengthCm = 300f, section = SectionType.Box };
+            i.ApplyLabGantryDimensions();
+
+            Assert.That(i.IsGantry, Is.True);
+            Near(241.0, i.lengthCm, "94.9 in girder");
+            Near(13.0, i.iBeam.heightCm, "h");
+            Near(8.0, i.iBeam.flangeWidthCm, "bf");
+            Near(21.55, SiteAdjust.GantrySupportMm(i, false) / 10.0, "left pin at the left leg's inner face");
+            Near(219.45, SiteAdjust.GantrySupportMm(i, true) / 10.0, "right pin at the right leg's inner face");
+            Near(197.9, (SiteAdjust.GantrySupportMm(i, true) - SiteAdjust.GantrySupportMm(i, false)) / 10.0, "77.9 in clear");
+            Assert.That(i.supports[1].atRightEnd, Is.False);
+            Near(120.5, i.pointLoads[0].positionCm, "trolley at midspan");
+            Assert.That(i.Validate(), Is.Empty);
+
+            Assert.That(i.TrySolve(out var s, out var error), Is.True, error);
+            double m = i.pointLoads[0].forceN * 1.979 / 4;
+            Near(m, s.PeakMoment.Value, "PL/4 over the pins, not over the whole girder", 1e-3 * m);
+        }
+
+        [Test]
         public void GantryStateNeedsItsSupportsAndTrolley()
         {
             var i = Gantry();

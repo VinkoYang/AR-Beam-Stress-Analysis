@@ -47,8 +47,8 @@ namespace HoloMech
         /// <summary>Raised when the Gantry preset was pressed (the on-site card repeats the note below).</summary>
         public event Action GantryApplied;
 
-        /// <summary>The Gantry preset's values are placeholders until the real gantry is measured.</summary>
-        public const string GantryDefaultsNote = "Defaults — set span, supports and section to the measured gantry (T257)";
+        /// <summary>The Gantry preset uses the 2026-11-06 length and section; pins, tf and tw are not measured yet.</summary>
+        public const string GantryDefaultsNote = "Lab gantry 2026-11-06: 2410 mm, 130 × 80 mm. Pins (at the legs' inner faces), tf and tw: set on site";
 
         TMP_Text gantryNote;
 
@@ -523,7 +523,7 @@ namespace HoloMech
         {
             if (preset == 4)
             {
-                inputs.ApplyGantryPreset();
+                inputs.ApplyLabGantryDimensions();
                 openSupport = -1;
                 openPoint = 0;
                 openUniform = -1;

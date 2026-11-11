@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using ARBeam;
 using TMPro;
@@ -93,8 +94,13 @@ namespace HoloMech
 
         static string AnchorsPath => Path.Combine(Application.persistentDataPath, "anchors.json");
 
-        /// <summary>Where the controller touched the real beam: on its top surface, or (by eye) on its axis.</summary>
-        bool touchTop = true;
+        /// <summary>
+        /// Where the controller touched the real beam: its top surface, the underside of its bottom flange (the face of an
+        /// overhead member such as a crane girder that can be reached and seen from below), or (by eye) its axis.
+        /// </summary>
+        enum TouchFace { Top, Bottom, Axis }
+
+        TouchFace touch = TouchFace.Top;
         bool spanSetsLength = true;
 
         public bool SiteMode => siteMode;
@@ -142,7 +148,7 @@ namespace HoloMech
             Height(alignButton.gameObject, 52);
             alignButton.onClick.AddListener(StartAlignment);
 
-            setTouch = Choice(c, "Touched", new[] { "Top surface", "Axis" }, 0, i => touchTop = i == 0);
+            setTouch = Choice(c, "Touched", new[] { "Top surface", "Bottom surface", "Axis" }, 0, i => touch = (TouchFace)i);
             lengthToggle = UiKit.Switch(t, c, "Span sets length", "Touched span sets beam length", true);
             Height(lengthToggle.gameObject, 52);
             lengthToggle.onValueChanged.AddListener(on => spanSetsLength = on);
@@ -490,7 +496,9 @@ namespace HoloMech
             }
 
             axis /= span;
-            float drop = touchTop ? (float)SectionProfile.For(inputs, 16).Height / 2f : 0f;
+            // The beam's origin is on its axis: half the section height below a touched top, above a touched underside.
+            float halfHeight = (float)SectionProfile.For(inputs, 16).Height / 2f;
+            float drop = touch == TouchFace.Top ? halfHeight : touch == TouchFace.Bottom ? -halfHeight : 0f;
             beam.transform.rotation = Quaternion.LookRotation(Vector3.Cross(axis, Vector3.up), Vector3.up);
             beam.transform.position = left - Vector3.up * drop;
             placedOnce = true;
@@ -519,15 +527,19 @@ namespace HoloMech
             try
             {
                 string path = Path.Combine(Application.persistentDataPath, "alignment_log.csv");
+                const string Header = "time_utc,left_x,left_y,left_z,right_x,right_y,right_z,span_m,touched,length_cm";
+                // A log from a build before "Bottom surface" has a touched_top column: keep it under another name.
+                if (File.Exists(path) && File.ReadLines(path).FirstOrDefault() != Header)
+                    File.Move(path, Path.Combine(Application.persistentDataPath, $"alignment_log_old_{DateTime.UtcNow:yyyyMMddTHHmmss}.csv"));
                 bool header = !File.Exists(path);
                 var c = CultureInfo.InvariantCulture;
                 using (var w = new StreamWriter(path, true))
                 {
-                    if (header) w.WriteLine("time_utc,left_x,left_y,left_z,right_x,right_y,right_z,span_m,touched_top,length_cm");
+                    if (header) w.WriteLine(Header);
                     w.WriteLine(string.Join(",", DateTime.UtcNow.ToString("o", c),
                         left.x.ToString("F4", c), left.y.ToString("F4", c), left.z.ToString("F4", c),
                         right.x.ToString("F4", c), right.y.ToString("F4", c), right.z.ToString("F4", c),
-                        span.ToString("F4", c), touchTop ? "1" : "0", inputs.lengthCm.ToString("F1", c)));
+                        span.ToString("F4", c), touch.ToString().ToLowerInvariant(), inputs.lengthCm.ToString("F1", c)));
                 }
                 Debug.Log("[SitePlacement] alignment logged to " + path);
             }

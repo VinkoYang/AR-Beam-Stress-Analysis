@@ -4,6 +4,7 @@
     "references": [
         "ARBeam.Mechanics",
         "HoloMech.Model",
+        "HoloMech.View",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
