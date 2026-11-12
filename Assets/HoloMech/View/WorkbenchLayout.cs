@@ -486,7 +486,7 @@ namespace HoloMech
 
         void BuildSupports(RectTransform c)
         {
-            ButtonRow(c, "Presets", new[] { "Cantilever", "Simple", "Fixed-Fixed", "2 Spans", "Gantry" }, ApplySupportPreset);
+            ButtonRow(c, "Presets", new[] { "Cantilever", "Simple", "Fixed-Fixed", "2 Spans", "Gantry", "Max" }, ApplySupportPreset);
             gantryNote = UiKit.Label(t, c, "Gantry Note", GantryDefaultsNote, t.regular, t.captionSize, t.textSecondary, TextAlignmentOptions.TopLeft);
             gantryNote.textWrappingMode = TextWrappingModes.Normal;
             Height(gantryNote.gameObject, 50);
@@ -521,6 +521,17 @@ namespace HoloMech
 
         void ApplySupportPreset(int preset)
         {
+            if (preset == 5) // "Max": every list at its limit, for the performance measurement
+            {
+                inputs.ApplyMaxLoadPreset();
+                openSupport = -1;
+                openPoint = -1;
+                openUniform = -1;
+                Sync();
+                changed?.Invoke();
+                return;
+            }
+
             if (preset == 4)
             {
                 inputs.ApplyLabGantryDimensions();

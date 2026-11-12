@@ -111,6 +111,18 @@ def closed_form(c, EI):
                          - m0 * x * (l**2 - x**2) / (6 * EI * l))
         mid = 5 * q * l**4 / (384 * EI) - m0 * l**2 / (8 * EI)
         return reactions, m0, max(maximise(end, 0, l), mid)
+    if cid == "C12":  # gantry girder: pins at the leg plates, overhangs a, point load P between the pins at x_P.
+        # Reactions by statics; |M|max = P a1 b1 / Lp under the load; |v|max between the pins from the simply supported
+        # formula (the overhangs are unloaded and rise, and their tip deflection is checked to be smaller).
+        p, xp = P[0], c["point_loads"][0]["x"]
+        x1, x2 = c["supports"][0]["x"], c["supports"][1]["x"]
+        Lp, a1 = x2 - x1, xp - x1
+        b1 = Lp - a1
+        vmax_span = maximise(lambda x: ss_point_defl(p, a1, Lp, EI, x), 0.0, Lp)
+        theta_l = p * a1 * b1 * (Lp + b1) / (6 * EI * Lp)  # end slopes of the simply supported span
+        theta_r = p * a1 * b1 * (Lp + a1) / (6 * EI * Lp)
+        v_tip = max(theta_l * x1, theta_r * (L - x2))  # upward, rigid rotation of the unloaded overhangs
+        return ([(x1, p * b1 / Lp, 0), (x2, p * a1 / Lp, 0)], p * a1 * b1 / Lp, max(vmax_span, v_tip))
     if cid == "C11":  # simply supported, several loads: statics + superposition
         pls = [(p["x"], p["P"]) for p in c["point_loads"]]
         uds = [(u["a"], u["b"], u["w"]) for u in c["udls"]]
@@ -216,7 +228,8 @@ def main():
         total = sum(p["P"] for p in c["point_loads"]) + sum(u["w"] * (u["b"] - u["a"]) for u in c["udls"])
         scale_f, scale_m = total, total * c["L"]
 
-        cf_r, cf_m, cf_v = closed_form(c, EI)
+        cE, cI = c.get("E", E), c.get("I", I)  # optional per-case E, I (C12: measured gantry girder)
+        cf_r, cf_m, cf_v = closed_form(c, cE * cI)
         ref = {"reactions": cf_r, "m_abs": cf_m, "v_abs": cf_v}
 
         r = cs[cid]
@@ -225,7 +238,7 @@ def main():
         st = r["stiffness"]
         stiff = {"reactions": [(q["x"], q["force"], q["moment"]) for q in st["reactions"]]}
 
-        ib = run_ib(c, E, I)
+        ib = run_ib(c, cE, cI)
 
         e_cf = rel_errors(ours, ref, scale_f, scale_m)
         e_ib = rel_errors(ours, ib, scale_f, scale_m)

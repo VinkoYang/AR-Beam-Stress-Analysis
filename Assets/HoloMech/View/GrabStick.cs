@@ -19,6 +19,14 @@ namespace HoloMech
 
         public const float DeadZone = 0.15f;
 
+        static int lastGrabFrame = int.MinValue / 2;
+
+        /// <summary>
+        /// True in the frame a grab used the stick and the next one (update order between the grab transformer and
+        /// <see cref="SliderStick"/> is not fixed), so a selected slider does not move while the user pushes or turns a grab.
+        /// </summary>
+        public static bool GrabbedRecently => Time.frameCount - lastGrabFrame <= 1;
+
         /// <summary>Closest and farthest distance from the head an object can be pushed or pulled to, metres.</summary>
         public const float MinDistance = 0.25f, MaxDistance = 10f;
 
@@ -45,6 +53,7 @@ namespace HoloMech
         /// <summary>Distance change (m) and yaw change (degrees) for this frame from the stick value.</summary>
         public static void Step(Vector2 stick, float dt, out float push, out float yaw)
         {
+            lastGrabFrame = Time.frameCount;
             push = Shape(stick.y) * PushSpeed * dt;
             yaw = Shape(stick.x) * TurnSpeed * dt;
         }

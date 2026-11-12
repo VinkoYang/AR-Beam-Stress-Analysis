@@ -35,7 +35,11 @@ static class Program
                     s["kind"].GetValue<string>() == "fixed" ? SupportKind.Fixed : SupportKind.Pin))
                 .ToArray();
 
-            var model = new BeamModel(length, section, e, BeamSupports.Custom(supports));
+            // Optional per-case E and I (C12 uses the measured gantry girder); otherwise the shared values.
+            double ce = c["E"] != null ? c["E"].GetValue<double>() : e;
+            double ci = c["I"] != null ? c["I"].GetValue<double>() : i;
+            var caseSection = c["I"] != null ? new BeamSection(1e-3, ci, 0.1) : section;
+            var model = new BeamModel(length, caseSection, ce, BeamSupports.Custom(supports));
             foreach (var p in c["point_loads"].AsArray())
                 model.PointLoads.Add(new PointLoad(p["x"].GetValue<double>(), p["P"].GetValue<double>()));
             foreach (var w in c["udls"].AsArray())

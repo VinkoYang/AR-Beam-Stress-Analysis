@@ -287,10 +287,16 @@ namespace HoloMech
         }
 
         /// <summary>
-        /// The Lucas ME lab gantry as measured by students on 2026-11-06 (project folder 04_data/raw/2026-11-06 Lucas
-        /// gantry): girder 94.9 in = 241.0 cm end to end, 77.9 in = 197.9 cm clear between the legs, section 13 × 8 cm.
+        /// The Lucas 132 Measurements Lab gantry, PI rulings of 2026-11-11 (project folder 04_data/raw/2026-11-11 gantry):
+        /// pins at the centres of the two leg plates, 82 in = 208.28 cm apart, girder overhanging 7 in each side, so 96 in =
+        /// 243.84 cm end to end; I section h 160, bf 85, tf 14 (flange root), tw 6 mm. Replaces the 2026-11-06 student
+        /// values (241 cm, 13 × 8 cm), which were wrong.
         /// </summary>
-        public const float LabGantryLengthCm = 241.0f, LabGantryClearCm = 197.9f, LabGantryHeightCm = 13f, LabGantryFlangeWidthCm = 8f;
+        public const float LabGantryLengthCm = 243.84f, LabGantryPinSpanCm = 208.28f, LabGantryHeightCm = 16f,
+            LabGantryFlangeWidthCm = 8.5f, LabGantryFlangeThicknessCm = 1.4f, LabGantryWebThicknessCm = 0.6f;
+
+        /// <summary>Trolley force set by the lab gantry preset: the 1/2-ton rating of the hoist, N.</summary>
+        public const float LabGantryTrolleyN = 4450f;
 
         /// <summary>
         /// <see cref="ApplyGantryPreset"/> with the lab gantry's measured length and section. The pin centres, the flange
@@ -303,12 +309,36 @@ namespace HoloMech
             SetLength(LabGantryLengthCm);
             iBeam.heightCm = LabGantryHeightCm;
             iBeam.flangeWidthCm = LabGantryFlangeWidthCm;
+            iBeam.flangeThicknessCm = LabGantryFlangeThicknessCm;
+            iBeam.webThicknessCm = LabGantryWebThicknessCm;
             ClampSectionDimensions();
-            float inset = (LabGantryLengthCm - LabGantryClearCm) / 2f;
+            float inset = (LabGantryLengthCm - LabGantryPinSpanCm) / 2f;
             supports[0].positionCm = inset;
             supports[1].atRightEnd = false;
             supports[1].positionCm = LabGantryLengthCm - inset;
             pointLoads[0].positionCm = LabGantryLengthCm / 2f;
+            pointLoads[0].forceN = LabGantryTrolleyN;
+        }
+
+        /// <summary>
+        /// The largest configuration the Workbench allows, for the performance table: a clamp at the left end and five pins
+        /// spread to the right end, eight 1 kN point loads and four 500 N/m uniform loads, on the current length and section.
+        /// </summary>
+        public void ApplyMaxLoadPreset()
+        {
+            float L = lengthCm;
+            supports.Clear();
+            for (int k = 0; k < MaxSupports; k++)
+                supports.Add(k == MaxSupports - 1
+                    ? new SupportInput { kind = SupportKind.Pin, atRightEnd = true }
+                    : new SupportInput { kind = k == 0 ? SupportKind.Fixed : SupportKind.Pin, positionCm = L * k / (MaxSupports - 1) });
+            pointLoads.Clear();
+            for (int k = 0; k < MaxPointLoads; k++)
+                pointLoads.Add(new PointLoadInput { enabled = true, positionCm = L * (k + 0.5f) / MaxPointLoads, forceN = 1000f, direction = LoadDirection.Down });
+            uniformLoads.Clear();
+            for (int k = 0; k < MaxUniformLoads; k++)
+                uniformLoads.Add(new UniformLoadInput { enabled = true, startCm = L * k / MaxUniformLoads, endCm = L * (k + 1) / MaxUniformLoads, intensityNPerM = 500f, direction = LoadDirection.Down });
+            preset = SupportPreset.Custom;
         }
 
         /// <summary>True while the two supports and the trolley load of the Gantry preset are there to adjust.</summary>

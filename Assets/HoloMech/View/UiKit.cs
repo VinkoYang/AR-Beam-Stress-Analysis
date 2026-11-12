@@ -262,6 +262,7 @@ namespace HoloMech
             sr.pivot = new Vector2(0.5f, 0);
             sr.offsetMin = new Vector2(0, 0);
             sr.offsetMax = new Vector2(0, 32);
+            slider.gameObject.AddComponent<SliderStick>().Init(step, val, t.accent); // thumbstick fine adjustment
 
             void Show(float v) => val.text = string.Format(System.Globalization.CultureInfo.InvariantCulture, format, v);
             slider.onValueChanged.AddListener(v =>
