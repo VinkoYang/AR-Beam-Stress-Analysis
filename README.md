@@ -4,11 +4,19 @@ Mixed-reality beam analysis for Meta Quest 3 / 3S. The user sets up a beam (leng
 
 The mechanics are exact Euler–Bernoulli closed-form solutions (Macaulay / singularity functions) for any set of pin and clamp supports, checked against Hibbeler's beam tables, an independent stiffness-method solver and IndeterminateBeam (`Tools/SolverCrossCheck/`). The interface follows HoloMech (Amouzgar & Mousavi 2025), rebuilt on this solver, in two layouts: **Workbench** (all panels on screen, the beam updates while you drag) and **Guided** (the paper's step-by-step flow).
 
-Release v1.0.0 is archived on Zenodo: [10.5281/zenodo.24206301](https://doi.org/10.5281/zenodo.24206301). Video demo on the headset: <https://youtu.be/WrtzLXeWMVE>. Change history and design decisions are in [DEVLOG.md](DEVLOG.md).
+Releases are archived on Zenodo: [10.5281/zenodo.24206300](https://doi.org/10.5281/zenodo.24206300) (all versions; v1.0.0, the NAMRC 55 submission, is [10.5281/zenodo.24206301](https://doi.org/10.5281/zenodo.24206301)). Video demo on the headset: <https://youtu.be/WrtzLXeWMVE>. Change history and design decisions are in [DEVLOG.md](DEVLOG.md).
 
 ## Demo
 
-**HoloMech reproduction, Workbench layout.** Every input is on screen; the beam is re-solved while a slider moves
+**On a real girder (Quest 3S, on-site mode, 2026-11-13).** The beam is overlaid at 1:1 scale on the aluminium girder of a laboratory gantry crane (Gantry preset, pins at the leg-plate centres, simulated trolley load at the measured trolley position x = 0.96 m). Left: 4.45 kN, shear-force and bending-moment diagrams. Right: 8.90 kN, bending-stress colours; σmax = 25.76 MPa, equal to the hand calculation for this section. The loads are simulated; nothing is measured on the girder.
+
+| | |
+|---|---|
+| ![Gantry girder, 4.45 kN, shear and moment diagrams](Docs/media/gantry-shear-moment.jpg) | ![Gantry girder, 8.90 kN, bending-stress colours](Docs/media/gantry-stress-colour.jpg) |
+
+The GIFs below are the desktop Editor scene, recorded on 2026-10-20 with the interface of that date (one point load and one uniform load; the current Workbench has lists of loads and supports).
+
+**Workbench layout.** Every input is on screen; the beam is re-solved while a slider moves
 (here the point load travels along a steel pipe fixed at both ends; colour = |deflection|).
 
 ![Workbench: moving the point load re-solves the beam live](Docs/media/holomech-workbench-live.gif)
@@ -33,6 +41,27 @@ colour-bar pointer reading the value at the cut. Shear (cyan) and moment (yellow
 
 The GIFs are recorded with Unity Recorder (`HoloMech ▸` scripts `DemoDriver` + `DemoRecorder`, 30 fps MP4 →
 ffmpeg → GIF), so they show the real UI being driven, not mock-ups.
+
+## Solver verification: 12 benchmark cases
+
+Each case is solved by the app's solver and compared with three references (`Tools/SolverCrossCheck/`): closed-form textbook solutions, a direct-stiffness solver (Hermite elements, test-only), and IndeterminateBeam 2.4.0 (Bonanno 2021). The error is the largest relative error over the reactions, \|M\|max and \|v\|max. The pictures are rendered by the app's own beam view (`Fig6BenchmarkShotPlayTest`): yellow arrows are point loads, blue arrows uniform loads, grey is the undeformed beam, and the deflected beam is coloured by \|M\| / \|M\|max of that case (green 0 → red 1), with deflection scaled to 10 % of the length. C01–C11 use EI = 2.0 × 10⁶ N·m²; the drawn section is for display only. C12 is the measured gantry girder (I 160 × 85 × 14 × 6 mm, E = 68.9 GPa, L = 2.438 m).
+
+| Case | Beam as drawn by the app | \|M\|max (N·m) | \|v\|max (mm) | Error vs closed form | vs stiffness | vs IndeterminateBeam |
+|---|---|---|---|---|---|---|
+| **C01** Cantilever, tip load | ![C01](Docs/media/benchmarks/C01.png) | 2000 | 1.333 | < 1e-12 | 3.8e-7 | 5.0e-8 |
+| **C02** Simply supported, central load | ![C02](Docs/media/benchmarks/C02.png) | 10000 | 6.667 | < 1e-12 | 7.3e-9 | 5.0e-8 |
+| **C03** Simply supported, load at 0.3L | ![C03](Docs/media/benchmarks/C03.png) | 8400 | 5.346 | < 1e-12 | 1.7e-8 | 3.6e-8 |
+| **C04** Simply supported, full UDL | ![C04](Docs/media/benchmarks/C04.png) | 4000 | 3.333 | < 1e-12 | 7.3e-9 | 1.0e-8 |
+| **C05** Fixed–fixed, central load | ![C05](Docs/media/benchmarks/C05.png) | 5000 | 1.667 | < 1e-12 | 3.1e-9 | 1.0e-7 |
+| **C06** Propped cantilever, full UDL | ![C06](Docs/media/benchmarks/C06.png) | 4000 | 1.387 | < 1e-12 | 8.8e-9 | 1.3e-7 |
+| **C07** Overhang, tip load | ![C07](Docs/media/benchmarks/C07.png) | 5000 | 3.333 | < 1e-12 | 2.2e-9 | 1.1e-7 |
+| **C08** Two-span continuous, UDL | ![C08](Docs/media/benchmarks/C08.png) | 4000 | 1.387 | < 1e-12 | 9.7e-10 | 1.3e-7 |
+| **C09** Interior clamp + pin, overhang | ![C09](Docs/media/benchmarks/C09.png) | 3000 | 0.500 | < 1e-12 | 1.8e-9 | 2.0e-7 |
+| **C10** Three-span continuous, UDL | ![C10](Docs/media/benchmarks/C10.png) | 1800 | 0.558 | < 1e-12 | 2.5e-9 | 1.7e-7 |
+| **C11** 2 point loads + 2 partial UDLs | ![C11](Docs/media/benchmarks/C11.png) | 16458 | 30.14 | < 1e-12 | 1.2e-8 | 1.6e-9 |
+| **C12** Lab gantry girder, 8.90 kN at midspan | ![C12](Docs/media/benchmarks/C12.png) | 4747 | 1.884 | < 1e-12 | 2.4e-8 | 9.4e-8 |
+
+The differences from IndeterminateBeam (about 1e-7) are at the level of that package's own numerical output; its error against the closed form is the same size. The C12 picture was rendered on 2026-11-12, with the pins 25.4 mm further in (177.8 / 2260.6 mm) than the 2026-11-13 measurement that the numbers in this row use (152.4 / 2286.0 mm).
 
 ## Requirements
 
