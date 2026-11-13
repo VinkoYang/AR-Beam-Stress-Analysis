@@ -1,306 +1,306 @@
 {
- "_comment": "Benchmark cases for Table 2 (NAMRC 55). SI units. Loads positive downward. Supports: kind = pin | fixed. One shared EI so cases differ only in supports and loads.",
- "E": 200000000000.0,
- "I": 1e-05,
- "cases": [
-  {
-   "id": "C01",
-   "name": "Cantilever, end point load",
-   "L": 2.0,
-   "supports": [
+  "_comment": "Benchmark cases for Table 2 (NAMRC 55). SI units. Loads positive downward. Supports: kind = pin | fixed. One shared EI so cases differ only in supports and loads.",
+  "E": 200000000000.0,
+  "I": 1e-05,
+  "cases": [
     {
-     "x": 0.0,
-     "kind": "fixed"
-    }
-   ],
-   "point_loads": [
-    {
-     "x": 2.0,
-     "P": 1000.0
-    }
-   ],
-   "udls": []
-  },
-  {
-   "id": "C02",
-   "name": "Simply supported, central point load",
-   "L": 4.0,
-   "supports": [
-    {
-     "x": 0.0,
-     "kind": "pin"
+      "id": "C01",
+      "name": "Cantilever, end point load",
+      "L": 2.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "fixed"
+        }
+      ],
+      "point_loads": [
+        {
+          "x": 2.0,
+          "P": 1000.0
+        }
+      ],
+      "udls": []
     },
     {
-     "x": 4.0,
-     "kind": "pin"
-    }
-   ],
-   "point_loads": [
-    {
-     "x": 2.0,
-     "P": 10000.0
-    }
-   ],
-   "udls": []
-  },
-  {
-   "id": "C03",
-   "name": "Simply supported, off-centre point load (a = 0.3L)",
-   "L": 4.0,
-   "supports": [
-    {
-     "x": 0.0,
-     "kind": "pin"
+      "id": "C02",
+      "name": "Simply supported, central point load",
+      "L": 4.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "pin"
+        },
+        {
+          "x": 4.0,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [
+        {
+          "x": 2.0,
+          "P": 10000.0
+        }
+      ],
+      "udls": []
     },
     {
-     "x": 4.0,
-     "kind": "pin"
-    }
-   ],
-   "point_loads": [
-    {
-     "x": 1.2,
-     "P": 10000.0
-    }
-   ],
-   "udls": []
-  },
-  {
-   "id": "C04",
-   "name": "Simply supported, full-span UDL",
-   "L": 4.0,
-   "supports": [
-    {
-     "x": 0.0,
-     "kind": "pin"
+      "id": "C03",
+      "name": "Simply supported, off-centre point load (a = 0.3L)",
+      "L": 4.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "pin"
+        },
+        {
+          "x": 4.0,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [
+        {
+          "x": 1.2,
+          "P": 10000.0
+        }
+      ],
+      "udls": []
     },
     {
-     "x": 4.0,
-     "kind": "pin"
-    }
-   ],
-   "point_loads": [],
-   "udls": [
-    {
-     "a": 0.0,
-     "b": 4.0,
-     "w": 2000.0
-    }
-   ]
-  },
-  {
-   "id": "C05",
-   "name": "Fixed-fixed, central point load",
-   "L": 4.0,
-   "supports": [
-    {
-     "x": 0.0,
-     "kind": "fixed"
+      "id": "C04",
+      "name": "Simply supported, full-span UDL",
+      "L": 4.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "pin"
+        },
+        {
+          "x": 4.0,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [],
+      "udls": [
+        {
+          "a": 0.0,
+          "b": 4.0,
+          "w": 2000.0
+        }
+      ]
     },
     {
-     "x": 4.0,
-     "kind": "fixed"
-    }
-   ],
-   "point_loads": [
-    {
-     "x": 2.0,
-     "P": 10000.0
-    }
-   ],
-   "udls": []
-  },
-  {
-   "id": "C06",
-   "name": "Propped cantilever, full-span UDL",
-   "L": 4.0,
-   "supports": [
-    {
-     "x": 0.0,
-     "kind": "fixed"
+      "id": "C05",
+      "name": "Fixed-fixed, central point load",
+      "L": 4.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "fixed"
+        },
+        {
+          "x": 4.0,
+          "kind": "fixed"
+        }
+      ],
+      "point_loads": [
+        {
+          "x": 2.0,
+          "P": 10000.0
+        }
+      ],
+      "udls": []
     },
     {
-     "x": 4.0,
-     "kind": "pin"
-    }
-   ],
-   "point_loads": [],
-   "udls": [
-    {
-     "a": 0.0,
-     "b": 4.0,
-     "w": 2000.0
-    }
-   ]
-  },
-  {
-   "id": "C07",
-   "name": "Overhanging beam, load at overhang tip",
-   "L": 4.0,
-   "supports": [
-    {
-     "x": 0.0,
-     "kind": "pin"
+      "id": "C06",
+      "name": "Propped cantilever, full-span UDL",
+      "L": 4.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "fixed"
+        },
+        {
+          "x": 4.0,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [],
+      "udls": [
+        {
+          "a": 0.0,
+          "b": 4.0,
+          "w": 2000.0
+        }
+      ]
     },
     {
-     "x": 3.0,
-     "kind": "pin"
-    }
-   ],
-   "point_loads": [
-    {
-     "x": 4.0,
-     "P": 5000.0
-    }
-   ],
-   "udls": []
-  },
-  {
-   "id": "C08",
-   "name": "Two-span continuous, full UDL",
-   "L": 8.0,
-   "supports": [
-    {
-     "x": 0.0,
-     "kind": "pin"
+      "id": "C07",
+      "name": "Overhanging beam, load at overhang tip",
+      "L": 4.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "pin"
+        },
+        {
+          "x": 3.0,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [
+        {
+          "x": 4.0,
+          "P": 5000.0
+        }
+      ],
+      "udls": []
     },
     {
-     "x": 4.0,
-     "kind": "pin"
+      "id": "C08",
+      "name": "Two-span continuous, full UDL",
+      "L": 8.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "pin"
+        },
+        {
+          "x": 4.0,
+          "kind": "pin"
+        },
+        {
+          "x": 8.0,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [],
+      "udls": [
+        {
+          "a": 0.0,
+          "b": 8.0,
+          "w": 2000.0
+        }
+      ]
     },
     {
-     "x": 8.0,
-     "kind": "pin"
-    }
-   ],
-   "point_loads": [],
-   "udls": [
-    {
-     "a": 0.0,
-     "b": 8.0,
-     "w": 2000.0
-    }
-   ]
-  },
-  {
-   "id": "C09",
-   "name": "Interior clamp + pin, left overhang with tip load, UDL on span",
-   "L": 4.0,
-   "supports": [
-    {
-     "x": 1.0,
-     "kind": "fixed"
+      "id": "C09",
+      "name": "Interior clamp + pin, left overhang with tip load, UDL on span",
+      "L": 4.0,
+      "supports": [
+        {
+          "x": 1.0,
+          "kind": "fixed"
+        },
+        {
+          "x": 4.0,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [
+        {
+          "x": 0.0,
+          "P": 3000.0
+        }
+      ],
+      "udls": [
+        {
+          "a": 1.0,
+          "b": 4.0,
+          "w": 2000.0
+        }
+      ]
     },
     {
-     "x": 4.0,
-     "kind": "pin"
-    }
-   ],
-   "point_loads": [
-    {
-     "x": 0.0,
-     "P": 3000.0
-    }
-   ],
-   "udls": [
-    {
-     "a": 1.0,
-     "b": 4.0,
-     "w": 2000.0
-    }
-   ]
-  },
-  {
-   "id": "C10",
-   "name": "Three-span continuous, full UDL",
-   "L": 9.0,
-   "supports": [
-    {
-     "x": 0.0,
-     "kind": "pin"
+      "id": "C10",
+      "name": "Three-span continuous, full UDL",
+      "L": 9.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "pin"
+        },
+        {
+          "x": 3.0,
+          "kind": "pin"
+        },
+        {
+          "x": 6.0,
+          "kind": "pin"
+        },
+        {
+          "x": 9.0,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [],
+      "udls": [
+        {
+          "a": 0.0,
+          "b": 9.0,
+          "w": 2000.0
+        }
+      ]
     },
     {
-     "x": 3.0,
-     "kind": "pin"
+      "id": "C11",
+      "name": "Simply supported, two point loads + two partial UDLs",
+      "L": 6.0,
+      "supports": [
+        {
+          "x": 0.0,
+          "kind": "pin"
+        },
+        {
+          "x": 6.0,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [
+        {
+          "x": 1.5,
+          "P": 4000.0
+        },
+        {
+          "x": 4.0,
+          "P": 6000.0
+        }
+      ],
+      "udls": [
+        {
+          "a": 0.0,
+          "b": 2.5,
+          "w": 1500.0
+        },
+        {
+          "a": 3.5,
+          "b": 6.0,
+          "w": 2500.0
+        }
+      ]
     },
     {
-     "x": 6.0,
-     "kind": "pin"
-    },
-    {
-     "x": 9.0,
-     "kind": "pin"
+      "id": "C12",
+      "name": "Gantry girder, measured section, 8.90 kN at midspan between pins",
+      "L": 2.4383999999999997,
+      "E": 68900000000.0,
+      "I": 1.3871877333333334e-05,
+      "supports": [
+        {
+          "x": 0.1524,
+          "kind": "pin"
+        },
+        {
+          "x": 2.286,
+          "kind": "pin"
+        }
+      ],
+      "point_loads": [
+        {
+          "x": 1.2191999999999998,
+          "P": 8900.0
+        }
+      ],
+      "udls": []
     }
-   ],
-   "point_loads": [],
-   "udls": [
-    {
-     "a": 0.0,
-     "b": 9.0,
-     "w": 2000.0
-    }
-   ]
-  },
-  {
-   "id": "C11",
-   "name": "Simply supported, two point loads + two partial UDLs",
-   "L": 6.0,
-   "supports": [
-    {
-     "x": 0.0,
-     "kind": "pin"
-    },
-    {
-     "x": 6.0,
-     "kind": "pin"
-    }
-   ],
-   "point_loads": [
-    {
-     "x": 1.5,
-     "P": 4000.0
-    },
-    {
-     "x": 4.0,
-     "P": 6000.0
-    }
-   ],
-   "udls": [
-    {
-     "a": 0.0,
-     "b": 2.5,
-     "w": 1500.0
-    },
-    {
-     "a": 3.5,
-     "b": 6.0,
-     "w": 2500.0
-    }
-   ]
-  },
-  {
-   "id": "C12",
-   "name": "Gantry girder, measured section, 8.90 kN at midspan between pins",
-   "L": 2.4383999999999997,
-   "E": 68900000000.0,
-   "I": 1.3871877333333334e-05,
-   "supports": [
-    {
-     "x": 0.17779999999999999,
-     "kind": "pin"
-    },
-    {
-     "x": 2.2605999999999997,
-     "kind": "pin"
-    }
-   ],
-   "point_loads": [
-    {
-     "x": 1.2191999999999998,
-     "P": 8900.0
-    }
-   ],
-   "udls": []
-  }
- ]
+  ]
 }

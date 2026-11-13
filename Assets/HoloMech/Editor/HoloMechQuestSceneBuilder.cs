@@ -126,7 +126,7 @@ public static class HoloMechQuestSceneBuilder
 
             var beamGo = new GameObject("HoloMech Beam");
             var view = beamGo.AddComponent<HoloMechBeamView>();
-            view.SetMaterials(AssetDatabase.LoadAssetAtPath<Material>("Assets/BeamStressMaterial.mat"), null, null, null, null);
+            view.SetMaterials(AssetDatabase.LoadAssetAtPath<Material>("Assets/HoloMech/Materials/BeamVertexColor.mat"), null, null, null, null);
             var vso = new SerializedObject(view);
             vso.FindProperty("buildOnStart").boolValue = false;
             vso.ApplyModifiedPropertiesWithoutUndo();

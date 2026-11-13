@@ -36,7 +36,7 @@ namespace HoloMech
         [SerializeField] bool logTimings = true;
 
         [Header("Materials")]
-        [Tooltip("Needs vertex colours (the student's BeamStressMaterial / BeamStressShader does).")]
+        [Tooltip("Needs vertex colours (HoloMech/Materials/BeamVertexColor, shader HoloMech/VertexColorLit).")]
         [SerializeField] Material stressMaterial;
         [SerializeField] Material ghostMaterial;
         [SerializeField] Material supportMaterial;

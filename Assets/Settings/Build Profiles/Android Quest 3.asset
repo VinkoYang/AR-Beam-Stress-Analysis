@@ -26,18 +26,6 @@ MonoBehaviour:
     m_path: Assets/HoloMech/Scenes/HoloMechQuest.unity
     m_guid: a52eeaec280da46478172ca8e10958ed
   - m_enabled: 1
-    m_path: Assets/_ARMarker/Scenes/MainMenu.unity
-    m_guid: d5d088db4e5563b43b979191c899093b
-  - m_enabled: 1
-    m_path: Assets/_ARMarker/Scenes/BeamScene.unity
-    m_guid: f0062059f6ceb374594f8d9a95b8b0c2
-  - m_enabled: 1
-    m_path: Assets/_ARMarker/Scenes/BeamScene 1.unity
-    m_guid: e82f3664cacd21347b9e3bd1e5ee3f58
-  - m_enabled: 1
-    m_path: Assets/_ARMarker/Scenes/BeamScene 2.unity
-    m_guid: ab08ab778fb085c4db37900b226a9e37
-  - m_enabled: 1
     m_path: Assets/HoloMech/Scenes/HoloMech.unity
     m_guid: bb3865a14529b35459c63c22ca2a2697
   - m_enabled: 1

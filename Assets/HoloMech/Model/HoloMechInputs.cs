@@ -288,11 +288,11 @@ namespace HoloMech
 
         /// <summary>
         /// The Lucas 132 Measurements Lab gantry, PI rulings of 2026-11-11 (project folder 04_data/raw/2026-11-11 gantry):
-        /// pins at the centres of the two leg plates, 82 in = 208.28 cm apart, girder overhanging 7 in each side, so 96 in =
+        /// pins at the centres of the two leg plates, 84 in = 213.36 cm apart, girder overhanging 6 in each side (tape, 2026-11-13; the 7 in of 11-11 was a recollection), so 96 in =
         /// 243.84 cm end to end; I section h 160, bf 85, tf 14 (flange root), tw 6 mm. Replaces the 2026-11-06 student
         /// values (241 cm, 13 × 8 cm), which were wrong.
         /// </summary>
-        public const float LabGantryLengthCm = 243.84f, LabGantryPinSpanCm = 208.28f, LabGantryHeightCm = 16f,
+        public const float LabGantryLengthCm = 243.84f, LabGantryPinSpanCm = 213.36f, LabGantryHeightCm = 16f,
             LabGantryFlangeWidthCm = 8.5f, LabGantryFlangeThicknessCm = 1.4f, LabGantryWebThicknessCm = 0.6f;
 
         /// <summary>Trolley force set by the lab gantry preset: the 1/2-ton rating of the hoist, N.</summary>

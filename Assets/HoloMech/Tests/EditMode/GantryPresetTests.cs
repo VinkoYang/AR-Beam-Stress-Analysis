@@ -153,16 +153,16 @@ namespace HoloMech.Tests
             Near(8.5, i.iBeam.flangeWidthCm, "bf");
             Near(1.4, i.iBeam.flangeThicknessCm, "tf");
             Near(0.6, i.iBeam.webThicknessCm, "tw");
-            Near(17.78, SiteAdjust.GantrySupportMm(i, false) / 10.0, "left pin at the left leg plate centre");
-            Near(226.06, SiteAdjust.GantrySupportMm(i, true) / 10.0, "right pin at the right leg plate centre");
-            Near(208.28, (SiteAdjust.GantrySupportMm(i, true) - SiteAdjust.GantrySupportMm(i, false)) / 10.0, "82 in between the pins");
+            Near(15.24, SiteAdjust.GantrySupportMm(i, false) / 10.0, "left pin at the left leg plate centre");
+            Near(228.60, SiteAdjust.GantrySupportMm(i, true) / 10.0, "right pin at the right leg plate centre");
+            Near(213.36, (SiteAdjust.GantrySupportMm(i, true) - SiteAdjust.GantrySupportMm(i, false)) / 10.0, "84 in between the pins");
             Near(4450.0, i.pointLoads[0].forceN, "hoist rating");
             Assert.That(i.supports[1].atRightEnd, Is.False);
             Near(121.92, i.pointLoads[0].positionCm, "trolley at midspan");
             Assert.That(i.Validate(), Is.Empty);
 
             Assert.That(i.TrySolve(out var s, out var error), Is.True, error);
-            double m = i.pointLoads[0].forceN * 2.0828 / 4;
+            double m = i.pointLoads[0].forceN * 2.1336 / 4;
             Near(m, s.PeakMoment.Value, "PL/4 over the pins, not over the whole girder", 1e-3 * m);
         }
 

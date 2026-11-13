@@ -58,17 +58,13 @@ ffmpeg → GIF), so they show the real UI being driven, not mock-ups.
 
 ## Scenes
 
-All in `Assets/_ARMarker/Scenes/`. Open `MainMenu.unity` and press Play.
+All in `Assets/HoloMech/Scenes/`. `HoloMechQuest.unity` is the Meta Quest 3 / 3S mixed-reality app (the build
+profile **Android Quest 3** builds only this scene); `HoloMech.unity` and `HoloMechXR.unity` are the desktop and XR
+Editor versions. The beam surface uses `Assets/HoloMech/Materials/BeamVertexColor.mat` (shader
+`HoloMech/VertexColorLit`), which shows the per-vertex deflection or bending-stress colours.
 
-| Scene | Menu button | Beam | Script on the beam |
-|---|---|---|---|
-| `BeamScene 1.unity` | One fixed end | Cantilever, L = 400 mm, clamped at the left | `CantileverBeam` |
-| `BeamScene 2.unity` | Overhanging beam | L = 800 mm, pin at 200 mm, roller at 600 mm | `OverhangBeam` |
-| `BeamScene.unity` | Two fixed ends | L = 800 mm, clamped at both ends (virtual only) | `BeamBend` |
-
-All three use the bench-rig bar: 6061-T6 aluminium, 1" × 1/8" (25.4 × 3.175 mm), E = 68.9 GPa.
-The mass slider is 0–500 g; the position slider runs from the left end (0) to the right end (1).
-The **Shear Force & Bending Moment Diagram** button toggles a live diagram panel.
+The scenes and scripts of the earlier student prototype (`Assets/_ARMarker`, the scripts in the `Assets` root and
+their material) were removed on 2026-11-13 and are not part of this software.
 
 ## UI
 
@@ -339,3 +335,7 @@ unity command eval -- --code "return BeamSceneSetup.SetUpAllScenes();" --timeout
 - Load input from tracked weight markers (rig option B) or hand interaction (headset option A).
 - A simply supported scene (the solver and tests already cover it).
 - AR placement of the virtual beam on a phone.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Unity packages, samples and the bundled fonts keep their own licenses.

@@ -31,7 +31,7 @@
         "max_abs_nodal_deflection": 0.0013333333333333333,
         "max_nodal_deflection_diff": 3.605946771647467E-10
       },
-      "solve_us_median_pc": 7.8
+      "solve_us_median_pc": 6.7
     },
     {
       "id": "C02",
@@ -72,7 +72,7 @@
         "max_abs_nodal_deflection": 0.006666666666666665,
         "max_nodal_deflection_diff": 4.877606218228747E-11
       },
-      "solve_us_median_pc": 12.3
+      "solve_us_median_pc": 11.799999999999999
     },
     {
       "id": "C03",
@@ -113,7 +113,7 @@
         "max_abs_nodal_deflection": 0.005346,
         "max_nodal_deflection_diff": 3.508556119247164E-11
       },
-      "solve_us_median_pc": 16.6
+      "solve_us_median_pc": 15.9
     },
     {
       "id": "C04",
@@ -154,7 +154,7 @@
         "max_abs_nodal_deflection": 0.0033333333333333335,
         "max_nodal_deflection_diff": 2.429819713489767E-11
       },
-      "solve_us_median_pc": 8.5
+      "solve_us_median_pc": 7.5
     },
     {
       "id": "C05",
@@ -195,7 +195,7 @@
         "max_abs_nodal_deflection": 0.0016666666666666672,
         "max_nodal_deflection_diff": 2.7887163064899134E-12
       },
-      "solve_us_median_pc": 23.5
+      "solve_us_median_pc": 20.400000000000002
     },
     {
       "id": "C06",
@@ -236,7 +236,7 @@
         "max_abs_nodal_deflection": 0.0013865188837499994,
         "max_nodal_deflection_diff": 1.2216913028093024E-11
       },
-      "solve_us_median_pc": 15.4
+      "solve_us_median_pc": 13.5
     },
     {
       "id": "C07",
@@ -277,7 +277,7 @@
         "max_abs_nodal_deflection": 0.0033333333333333353,
         "max_nodal_deflection_diff": 7.426184667203017E-12
       },
-      "solve_us_median_pc": 15.4
+      "solve_us_median_pc": 13.299999999999999
     },
     {
       "id": "C08",
@@ -328,7 +328,7 @@
         "max_abs_nodal_deflection": 0.001386506240000033,
         "max_nodal_deflection_diff": 1.344666565594732E-12
       },
-      "solve_us_median_pc": 31.8
+      "solve_us_median_pc": 26.599999999999998
     },
     {
       "id": "C09",
@@ -369,7 +369,7 @@
         "max_abs_nodal_deflection": 0.0004999999999999999,
         "max_nodal_deflection_diff": 8.784805565278941E-13
       },
-      "solve_us_median_pc": 21.7
+      "solve_us_median_pc": 19.5
     },
     {
       "id": "C10",
@@ -430,7 +430,7 @@
         "max_abs_nodal_deflection": 0.0005576117700847117,
         "max_nodal_deflection_diff": 1.3706525064244302E-12
       },
-      "solve_us_median_pc": 54.800000000000004
+      "solve_us_median_pc": 50.3
     },
     {
       "id": "C11",
@@ -471,48 +471,48 @@
         "max_abs_nodal_deflection": 0.030140475725791226,
         "max_nodal_deflection_diff": 3.533137289679633E-10
       },
-      "solve_us_median_pc": 12
+      "solve_us_median_pc": 41.4
     },
     {
       "id": "C12",
       "reactions": [
         {
-          "x": 0.17779999999999999,
+          "x": 0.1524,
           "force": 4450.000000000001,
           "moment": 0
         },
         {
-          "x": 2.2605999999999997,
+          "x": 2.286,
           "force": 4449.999999999999,
           "moment": 0
         }
       ],
       "peak_moment": {
         "x": 1.2191999999999998,
-        "value": 4634.2300000000005
+        "value": 4747.26
       },
       "peak_deflection": {
-        "x": 1.2191999999999998,
-        "value": -0.0017528187676230142
+        "x": 1.2192000000000007,
+        "value": -0.0018842274031957442
       },
       "stiffness": {
         "reactions": [
           {
-            "x": 0.17779999999999999,
-            "force": 4450.000506281853,
+            "x": 0.1524,
+            "force": 4449.9999913573265,
             "moment": 0
           },
           {
-            "x": 2.2605999999999997,
-            "force": 4450.000033318996,
+            "x": 2.286,
+            "force": 4449.999831974506,
             "moment": 0
           }
         ],
         "nodes": 403,
-        "max_abs_nodal_deflection": 0.0017528187676230142,
-        "max_nodal_deflection_diff": 2.1978760825214216E-11
+        "max_abs_nodal_deflection": 0.0018842274031957438,
+        "max_nodal_deflection_diff": 4.6101377923490894E-11
       },
-      "solve_us_median_pc": 6.8999999999999995
+      "solve_us_median_pc": 9.1
     }
   ]
 }

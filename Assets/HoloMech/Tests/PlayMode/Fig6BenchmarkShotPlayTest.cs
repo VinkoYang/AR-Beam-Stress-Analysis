@@ -63,7 +63,7 @@ namespace HoloMech.Tests
             new Case { id = "C10", L = 9f, supports = new[] { (0f, Pin), (3f, Pin), (6f, Pin), (9f, Pin) }, udls = new[] { (0f, 9f, 2000f) } },
             new Case { id = "C11", L = 6f, supports = new[] { (0f, Pin), (6f, Pin) }, points = new[] { (1.5f, 4000f), (4f, 6000f) },
                        udls = new[] { (0f, 2.5f, 1500f), (3.5f, 6f, 2500f) } },
-            new Case { id = "C12", L = 2.4384f, supports = new[] { (0.1778f, Pin), (2.2606f, Pin) }, points = new[] { (1.2192f, 8900f) } },
+            new Case { id = "C12", L = 2.4384f, supports = new[] { (0.1524f, Pin), (2.2860f, Pin) }, points = new[] { (1.2192f, 8900f) } },
         };
 
         static IEnumerator Frames(int n = 3)

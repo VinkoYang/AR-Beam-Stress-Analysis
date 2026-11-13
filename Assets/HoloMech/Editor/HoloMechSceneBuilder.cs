@@ -46,7 +46,7 @@ public static class HoloMechSceneBuilder
 
         var beamGo = new GameObject("HoloMech Beam");
         var view = beamGo.AddComponent<HoloMechBeamView>();
-        view.SetMaterials(AssetDatabase.LoadAssetAtPath<Material>("Assets/BeamStressMaterial.mat"), null, null, null, null);
+        view.SetMaterials(AssetDatabase.LoadAssetAtPath<Material>("Assets/HoloMech/Materials/BeamVertexColor.mat"), null, null, null, null);
         var vso = new SerializedObject(view);
         vso.FindProperty("buildOnStart").boolValue = false;
         vso.ApplyModifiedPropertiesWithoutUndo();
@@ -135,7 +135,7 @@ public static class HoloMechSceneBuilder
         beamGo.transform.position = new Vector3(-2f, 0, 0);
         var view = beamGo.AddComponent<HoloMechBeamView>();
         ApplyPaperFigure5(view.Inputs);
-        var stress = AssetDatabase.LoadAssetAtPath<Material>("Assets/BeamStressMaterial.mat");
+        var stress = AssetDatabase.LoadAssetAtPath<Material>("Assets/HoloMech/Materials/BeamVertexColor.mat");
         view.SetMaterials(stress, null, null, null, null);
         var vso = new SerializedObject(view);
         vso.FindProperty("buildOnStart").boolValue = false; // HoloMechApp builds the beam when the user presses Next

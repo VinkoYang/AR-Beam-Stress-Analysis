@@ -128,15 +128,15 @@ namespace HoloMech.Tests
             Assert.That(view.Solution.Model.Length, Is.EqualTo(2.4404).Within(1e-5));
             Assert.That(view.transform.localScale.x, Is.EqualTo(view.TrueScale).Within(1e-5f));
 
-            // 1 mm steps move the pins (82 in apart, 177.8 mm from each end) and the trolley (at midspan, 1219.2 mm).
+            // 1 mm steps move the pins (84 in apart, 152.4 mm from each end) and the trolley (at midspan, 1219.2 mm).
             Row("Right support", "Minus").onClick.Invoke();
             Row("Left support", "Plus").onClick.Invoke();
             Row("Trolley", "Plus").onClick.Invoke();
             yield return Frames();
-            Assert.That(Value("Right support"), Is.EqualTo("2259.6 mm"));
-            Assert.That(Value("Left support"), Is.EqualTo("178.8 mm"));
+            Assert.That(Value("Right support"), Is.EqualTo("2285.0 mm"));
+            Assert.That(Value("Left support"), Is.EqualTo("153.4 mm"));
             Assert.That(Value("Trolley"), Is.EqualTo("1220.2 mm"));
-            Assert.That(view.Solution.Reactions[1].Position, Is.EqualTo(2.2596).Within(1e-4));
+            Assert.That(view.Solution.Reactions[1].Position, Is.EqualTo(2.2850).Within(1e-4));
 
             // Past the slider's limit: it shows its end, the inputs and the row keep the value.
             inputs.SetLength(499.95f);

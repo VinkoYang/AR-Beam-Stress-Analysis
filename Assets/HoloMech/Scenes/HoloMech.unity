@@ -360,7 +360,7 @@ MonoBehaviour:
   displayLength: 4
   lockColorScale: 0
   lockedDeflectionMetres: 0.01
-  stressMaterial: {fileID: 2100000, guid: 2d461d53bb645f547b3b3683f93b5303, type: 2}
+  stressMaterial: {fileID: 2100000, guid: 96b9b9af00184f1b93d1cc9f9c246a5c, type: 2}
   ghostMaterial: {fileID: 0}
   supportMaterial: {fileID: 0}
   pointLoadMaterial: {fileID: 0}

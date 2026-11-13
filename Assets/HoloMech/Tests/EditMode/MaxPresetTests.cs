@@ -27,6 +27,6 @@ public class MaxPresetTests
         Assert.That(sec.I, Is.EqualTo(1.3872e-5).Within(1e-8), "I of the 160 x 85 x 14 x 6 mm section");
         Assert.That(i.TrySolve(out var s, out var error), Is.True, error);
         double sigma = System.Math.Abs(s.PeakMoment.Value) * sec.C / sec.I;
-        Assert.That(sigma / 1e6, Is.EqualTo(26.72).Within(0.02), "P L_pin c / 4I, paper Section 4.4");
+        Assert.That(sigma / 1e6, Is.EqualTo(27.38).Within(0.02), "P L_pin c / 4I with L_pin = 84 in (2026-11-13 tape), Table 2 C12");
     }
 }
