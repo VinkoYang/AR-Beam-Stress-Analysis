@@ -1,14 +1,10 @@
 # AR Beam Learning Module
 
-Unity app for teaching shear force, bending moment, stress and deflection in beams. Students load a beam
-(sliders today; tracked weights on a physical rig, or hand interaction in a headset, later) and see the
-closed-form beam-theory result: the deflected shape, a stress colour map on a fixed scale, the shear-force and
-bending-moment diagrams, and the support reactions.
+Mixed-reality beam analysis for Meta Quest 3 / 3S. The user sets up a beam (length, section, material, any number of point loads, uniform loads and pin or clamp supports) and sees the closed-form beam-theory result in the room: the deflected shape, a bending-stress colour map on a fixed scale, the shear-force and bending-moment diagrams, and the support reactions. In on-site mode the virtual beam is laid at 1:1 scale onto a real structural member (two-point controller alignment, then nudges), so the colours and diagrams appear on the member under simulated loads.
 
-The mechanics are exact Euler–Bernoulli closed-form solutions (Macaulay / singularity functions) for any set of
-pin and clamp supports, checked against Hibbeler's beam tables and against an independent stiffness-method solver.
-A reproduction of HoloMech (Amouzgar & Mousavi 2025) is being built in `Assets/HoloMech/` on the same solver. Milestones 1–5 are done in the Editor (solver, deflection view, input panels with the stability check, stress view with diagrams and a section cut, mixed-reality presentation); a device build is still open, with two layouts: **Workbench** (all panels on screen, the beam updates while you drag) and **Guided** (the paper's step-by-step flow); the scene is `Assets/HoloMech/Scenes/HoloMech.unity`; rebuild the scene with the menu **HoloMech ▸ Build Scene**.
-Change history and design decisions are in [DEVLOG.md](DEVLOG.md).
+The mechanics are exact Euler–Bernoulli closed-form solutions (Macaulay / singularity functions) for any set of pin and clamp supports, checked against Hibbeler's beam tables, an independent stiffness-method solver and IndeterminateBeam (`Tools/SolverCrossCheck/`). The interface follows HoloMech (Amouzgar & Mousavi 2025), rebuilt on this solver, in two layouts: **Workbench** (all panels on screen, the beam updates while you drag) and **Guided** (the paper's step-by-step flow).
+
+Release v1.0.0 is archived on Zenodo: [10.5281/zenodo.24206301](https://doi.org/10.5281/zenodo.24206301). Video demo on the headset: <https://youtu.be/WrtzLXeWMVE>. Change history and design decisions are in [DEVLOG.md](DEVLOG.md).
 
 ## Demo
 
@@ -28,16 +24,8 @@ colour-bar pointer reading the value at the cut. Shear (cyan) and moment (yellow
 
 ![Section cut moving along the beam](Docs/media/holomech-stress-cut.gif)
 
-**Original rig scene, now on beam theory.** 6061-T6 bar, 400 mm cantilever: mass 0 → 500 g at the tip, then the
-load moves toward the clamp. Deflection is drawn at true δ/L; colour is |M|c/I on a fixed scale (46 MPa = 500 g at
-the tip).
-
-![Cantilever scene: mass and position sliders](Docs/media/rig-cantilever.gif)
-
 | | |
 |---|---|
-| ![Main menu](Docs/media/main-menu.png) | ![Overhanging beam with live V and M diagrams](Docs/media/rig-overhang-diagrams.png) |
-| Main menu | Overhanging beam, 500 g at the tip, live V and M diagrams |
 | ![Guided layout, Scene 2](Docs/media/holomech-guided-scene2.png) | ![Guided layout, unstable supports](Docs/media/holomech-guided-unstable.png) |
 | HoloMech Guided layout (the paper's flow), Scene 2 | Free–Pinned supports: the app refuses and explains |
 | ![Mixed-reality board in XR Simulation](Docs/media/holomech-xr-simulation.png) | |
@@ -68,47 +56,35 @@ their material) were removed on 2026-11-13 and are not part of this software.
 
 ## UI
 
-All four screens share one look (`Assets/ARBeam/UI/UiTheme.asset`): Inter Regular / Medium / SemiBold / Bold
-(SIL OFL, licence next to the fonts), navy translucent rounded panels, white text, blue accent; shear cyan and
-moment yellow in the diagrams, as in HoloMech. Canvases use a 1920×1080 reference with match 0.5, and every
-element is anchored to its edge or corner, so the layout holds at any window size or aspect ratio.
+The desktop and XR Editor scenes use one theme (`Assets/ARBeam/UI/UiTheme.asset`): Inter Regular / Medium / SemiBold / Bold (SIL OFL, licence next to the fonts), navy translucent rounded panels, white text, blue accent; shear cyan and moment yellow in the diagrams, as in HoloMech. The Quest scene uses Meta's UI Set instead (see [Quest 3](#quest-3)).
 
-On a desktop (Editor Play mode with XR Simulation, or a PC build) `DesktopPreviewFraming` moves the XR Origin so the
-whole beam is in view from the side, clear of the top bar, control panel and legend, and re-frames when the window
-is resized. On phones and headsets it does nothing.
-
-Editor tools (menu **ARBeam ▸ UI**), both re-runnable:
-
-- **Build Theme Assets** (`UiThemeBuilder`): static TMP font assets for the four weights (pre-filled with ASCII,
-  Greek and the unit / arrow symbols the UI uses, so Play mode never rewrites them), the rounded-rectangle and
-  circle sprites, and the theme asset.
-- **Restyle All Scenes** (`BeamUiStyler`): lays out and styles the main menu and the three beam scenes, then runs
-  `BeamSceneSetup`. CLI: `unity command eval -- --code "return BeamUiStyler.StyleAllScenes();" --timeout 240000`
+Menu **ARBeam ▸ UI ▸ Build Theme Assets** (`UiThemeBuilder`, re-runnable) builds static TMP font assets for the four weights (pre-filled with ASCII, Greek and the unit / arrow symbols the UI uses, so Play mode never rewrites them), the rounded-rectangle and circle sprites, and the theme asset.
 
 ## How it fits together
 
 ```
- Load sources                 Model + solver                        Views
- ─────────────                ──────────────                        ─────
- SliderLoadSource  ─┐                                          ┌─▶ BeamMeshView        (deflected shape + stress colours)
- InspectorLoadSource├─▶ BeamController ──▶ BeamSolver.Solve ──▶├─▶ BeamDiagramGraphic  (V and M diagrams, uGUI)
- (marker / hand,    │    beam params,        (pure C#)         ├─▶ StressLegendLabel   (legend in MPa)
-  to be written)   ─┘    fixed scales,                         └─▶ SliderLoadSource    (arrow, readouts)
-                         scene ↔ beam mapping
+ HoloMech panels (Workbench / Guided / Quest window / on-site card)
+        │  HoloMechInputs: cm, N, N/m, GPa, upward positive
+        ▼
+ BeamModel (SI) ──▶ BeamSolver.Solve (pure C#, ARBeam.Mechanics) ──▶ BeamSolution
+        │                                                                │
+        ▼                                                                ▼
+ SitePlacement (1:1 pose on a real member)        HoloMechBeamView (deflected shape + stress colours),
+                                                  StressProfileView (V and M diagrams, section cut)
 ```
 
 | Folder | Assembly | What is in it |
 |---|---|---|
 | `Assets/ARBeam/Mechanics/` | `ARBeam.Mechanics` (`noEngineReferences: true`) | `BeamModel`, `BeamSection` (rectangle, pipe, box, I), `BeamMaterial`, `PointLoad`, `UniformLoad`, `BeamSupports` (named layouts, per-end Free/Pinned/Fixed, or any support list), `BeamSolver`, `BeamSolution`, `BeamResult`. No Unity dependency; the compiler enforces it. |
-| `Assets/ARBeam/Runtime/` | `ARBeam.Runtime` | MonoBehaviours: `BeamController`, `BeamLoadSource` (+ `SliderLoadSource`, `InspectorLoadSource`), `BeamMeshView`, `BeamDiagramGraphic`, `StressLegendLabel`, `SliderDrivenBeam`. |
-| `Assets/ARBeam/Editor/` | Assembly-CSharp-Editor | `BeamSceneSetup`: menu **ARBeam ▸ Set Up Beam Scenes** wires the three scenes. Idempotent. |
-| `Assets/ARBeam/Tests/EditMode/` | `ARBeam.Mechanics.Tests` | 105 NUnit tests (see below). |
+| `Assets/ARBeam/Runtime/` | `ARBeam.Runtime` | `UiTheme` (used by the HoloMech desktop scenes). The other MonoBehaviours (`BeamController`, `BeamLoadSource`, `BeamMeshView`, `BeamDiagramGraphic`, ...) are a generic slider-driven beam component; no scene in this release uses them. |
+| `Assets/ARBeam/Editor/` | Assembly-CSharp-Editor | `UiThemeBuilder` (see [UI](#ui)). |
+| `Assets/ARBeam/Tests/EditMode/` | `ARBeam.Mechanics.Tests` | Solver tests (see below). |
 | `Assets/HoloMech/Model/` | `HoloMech.Model` (`noEngineReferences: true`) | `HoloMechInputs`: the HoloMech panels' values (cm, N, N/m, GPa, upward positive) and their conversion to an SI `BeamModel`. `SiteAdjust`: the on-site card's mm steps. `SiteSnapshot`: a snapshot's CSV row and JSON. |
 | `Assets/HoloMech/View/` | `HoloMech.View` | Scene 4 view: `HoloMechBeamView` (grey reference beam, deflected beam coloured by \|w\|, supports, load arrows), `BeamMeshBuilder` (section extrusion, 240 stations), `DeformationPanel`, `UiKit` (themed controls from code); Mixed reality: `XRPresentation` (world-space board, LazyFollow pin); Quest window: `XRWindowLayout`, `FaceUserGrabTransformer`, `GrabHandleVisual`; demos: `DemoDriver`; Workbench layout: `WorkbenchLayout` (collapsible side panels, live re-solve, problem banner); Guided layout: `BeamInfoScreen` (Scene 2), `DimensionsPopup` (2.a–c, live cross-section preview), `LoadingScreen` (Scene 3), `ErrorPopup`; Scene 5: `StressProfileView` (3D V and M diagrams, section cut with shear arrow / moment arc / σ profile) and `StressPanel` (cut slider, colour bar and pointer, five switches); `HoloMechApp` is the state controller. |
-| `Assets/HoloMech/Tests/EditMode/` | `HoloMech.Tests` | 57 tests: unit and sign conversion, section outlines vs section properties, on-site steps, Gantry preset, snapshots. |
-| `Assets/HoloMech/Tests/PlayMode/` | `HoloMech.PlayTests` | 2 tests that open the real scenes and press their buttons. |
-| `Assets/*.cs` | Assembly-CSharp | The original scripts. `CantileverBeam`, `OverhangBeam`, `BeamBend` are now thin subclasses of `SliderDrivenBeam`, kept so the scenes' slider events still resolve. `DiagramPopup` toggles the live panel. |
+| `Assets/HoloMech/Tests/EditMode/` | `HoloMech.Tests` | Unit and sign conversion, section outlines vs section properties, multiple loads and supports, on-site steps, Gantry and Max presets, controller stick input, snapshots. |
+| `Assets/HoloMech/Tests/PlayMode/` | `HoloMech.PlayTests` | Tests that open the real scenes and press their buttons, and the render tests for the paper figures. |
 | `Tools/SolverTests/` | — | .NET project that compiles the solver and its tests outside Unity. |
+| `Tools/SolverCrossCheck/` | — | Solver verification cases (`cases.json`) checked against closed form, the stiffness reference and IndeterminateBeam 2.4.0 (`crosscheck.py`). |
 
 ### Using the solver directly
 
@@ -143,40 +119,9 @@ BeamSolver.TrySolve(propped, out var solution, out string error);   // error != 
 - **Reactions:** force positive upward, moment positive counter-clockwise on the beam.
 - **Shear and moment jump** at point loads (and M at clamps). `Shear(x)`/`Moment(x)` return the right-hand limit
   (left-hand limit at x = L); `ShearLeft`/`ShearRight` when the side matters.
-- **Self-weight** is off by default (`BeamController.includeSelfWeight`). When on, it is added to V, M, σ and the
-  reactions; the drawn deflection is always relative to the unloaded beam, because the real bar already sags under
-  its own weight.
-- **Deflection amplification** (`BeamMeshView`): 1 means the drawn δ/L equals the real δ/L. The beam's scene length
-  maps to the real length, so a 1:1 AR overlay uses amplification 1.
-- **Fixed colour and diagram scales:** full scale is the design mass (500 g) at its worst position on that beam,
-  computed once per configuration. Nothing is renormalised per frame, so colour and diagram height mean the same
-  thing for every load. Override the stress scale with `stressScaleOverrideMPa`.
-
-### Adding another input (marker-tracked weights, hand interaction)
-
-Subclass `BeamLoadSource`, report loads in beam coordinates, and call `NotifyChanged()` when they change.
-`BeamController.WorldToBeamX` projects a tracked world position onto the beam axis, and `SetAxisWorld` aligns the
-axis with two tracked points (for example markers at the beam ends).
-
-```csharp
-public class MarkerLoadSource : ARBeam.BeamLoadSource
-{
-    public override void CollectLoads(ARBeam.BeamController beam, List<PointLoad> loads)
-    {
-        foreach (var hanger in stableHangers)   // e.g. only after 0.5 s without movement
-            loads.Add(PointLoad.FromMass(beam.WorldToBeamX(hanger.position), hanger.massKg));
-    }
-}
-```
-
-Put it on the beam object (or a child) and it is picked up automatically, or add it with
-`BeamController.AddLoadSource`.
-
 ## Tests
 
-162 EditMode tests and 2 PlayMode tests.
-
-`Assets/ARBeam/Tests/EditMode/` (105):
+`Assets/ARBeam/Tests/EditMode/`:
 
 - **HibbelerTableTests**: R. C. Hibbeler, *Mechanics of Materials* (10th ed.), Appendix C: cantilever (end load,
   midspan load, full and half UDL) and simply supported (central and off-centre load, full and half UDL),
@@ -193,13 +138,13 @@ Put it on the beam object (or a child) and it is picked up automatically, or add
 - **SolverPropertyTests**: equilibrium, dM/dx = V and dv/dx = θ, support conditions, superposition, peak
   finding against dense sampling, diagram steps, input validation.
 
-`Assets/HoloMech/Tests/EditMode/` (57): cm/GPa → SI, "upward is positive" → solver sign, material buttons,
+`Assets/HoloMech/Tests/EditMode/`: cm/GPa → SI, "upward is positive" → solver sign, material buttons,
 section dimensions, unstable supports and bad loads reported before solving; extrusion outlines (box, I, pipe)
 have the same area and I as the section properties the solver uses; dependent section limits; on-site mm steps and
 the 1000 cm on-site limit; the Gantry preset and its support and trolley rows; snapshot CSV rows; the JSON round trip
 to the same σmax and vmax.
 
-`Assets/HoloMech/Tests/PlayMode/` (2): `WorkbenchListsPlayTest` (desktop scene; it waits for rendered frames, so run
+`Assets/HoloMech/Tests/PlayMode/`: `WorkbenchListsPlayTest` (desktop scene; it waits for rendered frames, so run
 it from the Test Runner window, not under `-batchmode`) and `SiteCardPlayTest` (Quest scene, no headset needed: the
 on-site card's buttons, with the anchor buttons grey). Spatial anchors themselves can only be tested on a headset.
 
@@ -222,9 +167,7 @@ unity command run_tests -- --mode EditMode --filter HoloMech.Tests --filter_type
 board about 2 m wide, 2.6 m in front of the user, with the beam hologram (0.7 m) in front of the board's free centre.
 UI input goes through XRI (`XRUIInputModule` + `TrackedDeviceGraphicRaycaster`), so phone touch (the AR rig's
 screen-space ray interactor) and headset rays or pokes both work; nothing depends on MRTK. **Pin** toggles XRI's
-`LazyFollow`: pinned, the board stays put; **Follow**, it drifts back in front of the user. The main menu's
-**HoloMech** button loads `HoloMech` on a PC and `HoloMechXR` on a phone or headset.
-
+`LazyFollow`: pinned, the board stays put; **Follow**, it drifts back in front of the user.
 In the Editor, press Play in `HoloMechXR`: XR Simulation provides the camera (right mouse + WASD to move).
 
 ### Quest 3
@@ -280,9 +223,7 @@ On the Quest, the **On-site Overlay (MR)** card in the Beam panel lays the beam 
 - **Dimensions:** beam length and the current section's dimensions in mm, with − / + and a 1 mm, 5 mm or 1 cm step. On-site, the
   length can reach 10 m; past the sliders' 5 m the Workbench slider stays at its end and the inputs hold the value. The section
   type is still chosen in the Workbench.
-- **Gantry preset** (Workbench, Supports): I-beam, aluminium (E = 68.9 GPa), two pins at the ends, one point load (the trolley) at
-  midspan. Its values are placeholders until the gantry is measured. On-site it adds rows for the left support, right support
-  and trolley, so the beam can overhang its supports. Two-point alignment still means the ends of the beam, not the legs. The legs
+- **Gantry preset** (Workbench, Supports): the lab gantry girder as measured on 2026-11-13: aluminium I-beam (E = 68.9 GPa), 160 × 85 mm, flanges 14 mm (parallel-flange model), web 6 mm, length 2438.4 mm, pins at 152.4 and 2286.0 mm, one 4450 N point load (the trolley) at midspan. On-site it adds rows for the left support, right support and trolley, so they can be moved to the measured positions. Two-point alignment still means the ends of the beam, not the legs. The legs
   and trolley are not drawn: the real ones are right there.
 - **Save placement** keeps the beam's place and inputs across app starts with one Meta spatial anchor; pressing it again replaces
   the old one, and **Forget placement** erases it. Next time on-site mode is turned on, the beam goes back there, or the status says it
@@ -317,23 +258,11 @@ Reading `site_snapshots.csv`:
 - `pos_x`, `pos_y`, `pos_z` and `yaw_deg` are the beam's left end in world coordinates and its angle about the vertical. The world
   origin moves with each app start, so they are only comparable within one session; across sessions, use the anchor.
 
-## Re-running the scene setup
-
-`BeamSceneSetup` sets the beam parameters, adds the components, sets the mass slider to 0–500 g, builds the live
-diagram panel next to the old PNG popup (the PNG is kept, unused), and moves the overhang supports to 200/600 mm.
-Run it from **ARBeam ▸ Set Up Beam Scenes**, or from the CLI:
-
-```
-unity command eval -- --code "return BeamSceneSetup.SetUpAllScenes();" --timeout 120000
-```
-
 ## Not done yet
 
 - Quest: depth occlusion (real objects in front of the beam or panels should hide them), with Meta's Depth API
   (`EnvironmentDepthManager` and occlusion shaders for the beam materials and the UI). Planned, not started.
-- Cross-check against the Python package IndeterminateBeam (Bonanno 2021).
-- Load input from tracked weight markers (rig option B) or hand interaction (headset option A).
-- A simply supported scene (the solver and tests already cover it).
+- Loads from real weights (tracked markers or load cells) instead of simulated loads.
 - AR placement of the virtual beam on a phone.
 
 ## License
