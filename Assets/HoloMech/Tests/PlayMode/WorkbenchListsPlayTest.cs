@@ -25,8 +25,9 @@ namespace HoloMech.Tests
 
         static IEnumerator Shot(string name)
         {
-            yield return new WaitForEndOfFrame();
+            // Without a shot folder, skip the end-of-frame wait: in batchmode it never comes on this scene and the test hangs.
             if (string.IsNullOrEmpty(ShotDir)) yield break;
+            yield return new WaitForEndOfFrame();
             var tex = ScreenCapture.CaptureScreenshotAsTexture();
             File.WriteAllBytes(Path.Combine(ShotDir, name + ".png"), tex.EncodeToPNG());
             Object.Destroy(tex);

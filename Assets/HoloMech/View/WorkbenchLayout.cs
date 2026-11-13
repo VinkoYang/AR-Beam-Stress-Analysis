@@ -47,8 +47,8 @@ namespace HoloMech
         /// <summary>Raised when the Gantry preset was pressed (the on-site card repeats the note below).</summary>
         public event Action GantryApplied;
 
-        /// <summary>The Gantry preset uses the 2026-11-06 length and section; pins, tf and tw are not measured yet.</summary>
-        public const string GantryDefaultsNote = "Lab gantry 2026-11-06: 2410 mm, 130 × 80 mm. Pins (at the legs' inner faces), tf and tw: set on site";
+        /// <summary>The Gantry preset uses the girder measured on 2026-11-11 (see <see cref="HoloMechInputs.ApplyLabGantryDimensions"/>).</summary>
+        public const string GantryDefaultsNote = "Lab gantry 2026-11-11: 2438 mm, I 160 × 85 mm, pins 2083 mm apart, trolley 4450 N at midspan";
 
         TMP_Text gantryNote;
 
