@@ -108,7 +108,8 @@ namespace HoloMech
             yield return Hold(0.6f);
             Click(null, "Add Uniform Load");           // full span, opened
             yield return Hold(1.0f);
-            var w = FindSlider("w1", "Start from left end (cm)");
+            int wn = App != null ? App.Inputs.uniformLoads.Count : 1; // the scene may already hold loads; the new one is last
+            var w = FindSlider($"w{wn}", "Start from left end (cm)");
             float L = App != null ? App.Inputs.lengthCm : 200f;
             yield return Glide(w, 0f, L * 0.5f, 1.2f);
             Click(null, "Add Support");                // pin in the widest gap
@@ -157,7 +158,7 @@ namespace HoloMech
         /// <summary>Moves a slider smoothly (ease in-out) so its callbacks fire every frame, as when dragged.</summary>
         static IEnumerator Glide(Slider s, float from, float to, float seconds)
         {
-            if (s == null) yield break;
+            if (s == null) { Debug.LogWarning("DemoDriver: no slider to move"); yield break; }
             from = Mathf.Clamp(from, s.minValue, s.maxValue);
             to = Mathf.Clamp(to, s.minValue, s.maxValue);
             float t0 = Time.time;

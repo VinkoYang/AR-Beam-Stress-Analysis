@@ -14,17 +14,18 @@ Releases are archived on Zenodo: [10.5281/zenodo.24206300](https://doi.org/10.52
 |---|---|
 | ![Gantry girder, 4.45 kN, shear and moment diagrams](Docs/media/gantry-shear-moment.jpg) | ![Gantry girder, 8.90 kN, bending-stress colours](Docs/media/gantry-stress-colour.jpg) |
 
-The GIFs below are the desktop Editor scene, recorded on 2026-10-20 with the interface of that date (one point load and one uniform load; the current Workbench has lists of loads and supports).
+The GIFs below are the desktop Editor scene, recorded on 2026-11-14.
 
 **Workbench layout.** Every input is on screen; the beam is re-solved while a slider moves
-(here the point load travels along a steel pipe fixed at both ends; colour = |deflection|).
+(here, on a simply supported pipe, P1 travels along the beam and grows, then P2 is added and moved; colour = bending stress).
 
-![Workbench: moving the point load re-solves the beam live](Docs/media/holomech-workbench-live.gif)
+![Workbench: moving the point loads re-solves the beam live](Docs/media/holomech-workbench-live.gif)
 
-**Changing the section and supports.** Pipe → box → I-beam, then cantilever, Pinned–Free (unstable: the banner
-explains why and the last valid beam stays), simply supported, an upward uniform load, and back to fixed–fixed.
+**Changing the supports and loads.** The support presets (cantilever, simply supported, fixed–fixed, two spans), then the
+clamp turned into a pin (unstable: the banner explains why and the last valid beam stays), a uniform load added and
+shortened, an interior support added, and the lab gantry preset.
 
-![Section and boundary changes, with the stability check](Docs/media/holomech-inputs.gif)
+![Support presets, the stability check, loads and the gantry preset](Docs/media/holomech-inputs.gif)
 
 **Stress profile (paper Fig. 7).** The section cut moves along the beam; the part beyond the cut turns
 transparent; the cut shows the shear force, then the bending moment, then the normal-stress distribution, with the
