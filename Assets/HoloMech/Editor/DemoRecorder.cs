@@ -12,11 +12,27 @@ using UnityEngine;
 /// even on a slow or unfocused Editor), and stops when the script's duration has passed. Converting to GIF is done
 /// outside Unity with ffmpeg.
 ///
+/// Menu, in Play mode in Assets/HoloMech/Scenes/HoloMech.unity:  HoloMech ▸ README Demos ▸ Record ...
 /// CLI, in Play mode:  unity command eval -- --code "return DemoRecorder.Begin(\"workbench\", \"holomech-workbench-live\");"
 ///                     unity command eval -- --code "return DemoRecorder.Status();"
+/// The MP4 lands in Temp/Recordings/; Tools/ReadmeMedia/mp4_to_gif.ps1 turns it into the README GIF.
 /// </summary>
 public static class DemoRecorder
 {
+    [MenuItem("HoloMech/README Demos/Record Workbench (holomech-workbench-live)")]
+    static void RecordWorkbench() => Debug.Log("DemoRecorder: " + Begin(DemoDriver.Workbench, "holomech-workbench-live"));
+
+    [MenuItem("HoloMech/README Demos/Record Inputs (holomech-inputs)")]
+    static void RecordInputs() => Debug.Log("DemoRecorder: " + Begin(DemoDriver.Inputs, "holomech-inputs"));
+
+    [MenuItem("HoloMech/README Demos/Record Stress Cut (holomech-stress-cut)")]
+    static void RecordStress() => Debug.Log("DemoRecorder: " + Begin(DemoDriver.Stress, "holomech-stress-cut"));
+
+    [MenuItem("HoloMech/README Demos/Record Workbench (holomech-workbench-live)", true)]
+    [MenuItem("HoloMech/README Demos/Record Inputs (holomech-inputs)", true)]
+    [MenuItem("HoloMech/README Demos/Record Stress Cut (holomech-stress-cut)", true)]
+    static bool CanRecord() => Application.isPlaying && (controller == null || !controller.IsRecording());
+
     public const string OutputFolder = "Temp/Recordings";
 
     static RecorderController controller;
@@ -71,5 +87,6 @@ public static class DemoRecorder
         controller = null;
         EditorApplication.update -= Tick;
         status = "done";
+        Debug.Log("DemoRecorder: done, " + Path.GetFullPath(OutputFolder));
     }
 }
